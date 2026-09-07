@@ -57,8 +57,13 @@ def _get_backend():
         return None
 
 
-def extract_text(image) -> list[str]:
-    """Best-effort text extraction; never raises."""
+def extract_detections(image) -> list[tuple[list, str]]:
+    """Best-effort (box, text) detection; never raises.
+
+    Boxes are 4-point quads [[x, y], ...] in image pixel coordinates,
+    sorted in reading order (top-to-bottom, left-to-right). Used both for
+    the summary text dump and for the keep-text restoration mask.
+    """
     import numpy as np
 
     arr = np.asarray(image.convert("RGB"))
@@ -71,12 +76,16 @@ def extract_text(image) -> list[str]:
             if not result:
                 return []
             dets = sorted(result, key=lambda d: (d[0][0][1], d[0][0][0]))
-            return [str(d[1]).strip() for d in dets if str(d[1]).strip()]
+            return [([list(map(float, pt)) for pt in d[0]],
+                     str(d[1]).strip())
+                    for d in dets if str(d[1]).strip()]
         if _backend_name == "easyocr":
             _, reader = be
             result = reader.readtext(arr)
             dets = sorted(result, key=lambda d: (d[0][0][1], d[0][0][0]))
-            return [str(d[1]).strip() for d in dets if str(d[1]).strip()]
+            return [([list(map(float, pt)) for pt in d[0]],
+                     str(d[1]).strip())
+                    for d in dets if str(d[1]).strip()]
         if _backend_name == "pytesseract":
             import pytesseract
 
@@ -84,13 +93,26 @@ def extract_text(image) -> list[str]:
                 image.convert("RGB"),
                 output_type=pytesseract.Output.DICT,
             )
-            words = []
-            for text, conf in zip(
-                    data["text"], data["conf"], strict=False):
+            out = []
+            for i, (text, conf) in enumerate(zip(
+                    data["text"], data["conf"], strict=False)):
                 t = str(text).strip()
                 if t and float(conf) > 0:
-                    words.append(t)
-            return words
+                    l, tp = int(data["left"][i]), int(data["top"][i])
+                    w, h = int(data["width"][i]), int(data["height"][i])
+                    out.append((
+                        [[float(l), float(tp)],
+                         [float(l + w), float(tp)],
+                         [float(l + w), float(tp + h)],
+                         [float(l), float(tp + h)]],
+                        t))
+            out.sort(key=lambda d: (d[0][0][1], d[0][0][0]))
+            return out
     except Exception:
         return []
     return []
+
+
+def extract_text(image) -> list[str]:
+    """Best-effort text extraction; never raises."""
+    return [t for _, t in extract_detections(image)]

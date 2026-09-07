@@ -163,8 +163,9 @@ class ZinvisEngine:
             )
         if self.keep_text:
             warnings.append(
-                "keep-text: original pixels are restored over detected small "
-                "text, so any watermark signal under those pixels survives"
+                "keep-text: original pixels are restored over detected text "
+                "(OCR boxes + edge heuristic), so watermark signal under "
+                "those pixels survives"
             )
         if s < 0.05:
             warnings.append(
@@ -212,14 +213,22 @@ class ZinvisEngine:
                     "weights that cannot run. Use --pipeline zimage."
                 )
             img = load_rgb(in_p)
+            use_keep = self.keep_text if keep_text is None else keep_text
             if self.ocr:
                 from . import ocr as ocr_mod
 
-                record.text = ocr_mod.extract_text(img)
+                dets = ocr_mod.extract_detections(img)
+                record.text = [t for _, t in dets]
+                record.text_boxes = [b for b, _ in dets]
                 if not record.text and ocr_mod.backend_name() is None:
                     record.warnings.append(
                         "ocr: no backend installed; install "
                         "rapidocr-onnxruntime to save image text")
+                elif record.text and not use_keep:
+                    record.warnings.append(
+                        f"ocr: {len(record.text)} text items detected; pass "
+                        "--keep-text to restore glyphs (watermark under "
+                        "text survives)")
             orig_size = img.size
             working = img
             eff_max = max_side
@@ -245,12 +254,23 @@ class ZinvisEngine:
                     raise
             if out.size != working.size:
                 out = out.resize(working.size, Image.Resampling.LANCZOS)
-            use_keep = self.keep_text if keep_text is None else keep_text
             text_mask = None
+            box_mask = None
             if use_keep:
-                from .textmask import composite_original, detect_text_mask
+                from .textmask import (
+                    composite_original,
+                    detect_text_mask,
+                    mask_from_boxes,
+                    union_masks,
+                )
 
                 text_mask = detect_text_mask(working)
+                box_mask = mask_from_boxes(record.text_boxes, img.size)
+                if box_mask is not None:
+                    text_mask = union_masks(
+                        text_mask,
+                        box_mask.resize(working.size,
+                                        Image.Resampling.LANCZOS))
                 out = composite_original(out, working, text_mask)
             record.psnr = psnr(working, out)
             backoff_stage = None
@@ -299,9 +319,15 @@ class ZinvisEngine:
             if orig_size != working.size:
                 out = out.resize(orig_size, Image.Resampling.LANCZOS)
                 if use_keep:
-                    from .textmask import composite_original, detect_text_mask
+                    from .textmask import (
+                        composite_original,
+                        detect_text_mask,
+                        union_masks,
+                    )
 
                     orig_mask = detect_text_mask(img)
+                    if box_mask is not None:
+                        orig_mask = union_masks(orig_mask, box_mask)
                     out = composite_original(out, img, orig_mask)
             save_stripped(out, out_p)
             record.stages = list(getattr(out, "info", {}).get(
@@ -371,7 +397,9 @@ class ZinvisEngine:
                     from . import ocr as ocr_mod
 
                     try:
-                        r.text = ocr_mod.extract_text(load_rgb(p))
+                        dets = ocr_mod.extract_detections(load_rgb(p))
+                        r.text = [t for _, t in dets]
+                        r.text_boxes = [b for b, _ in dets]
                     except Exception:
                         r.text = []
             else:

@@ -42,6 +42,33 @@ def test_detect_text(tmp="/tmp/zinvis_textmask_test"):
     assert frac2 < 0.001, frac2
 
 
+def test_mask_from_boxes(tmp="/tmp/zinvis_box_test"):
+    from zinvis.textmask import mask_from_boxes, union_masks
+
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+
+    m = mask_from_boxes([[[0, 0], [20, 0], [20, 10], [0, 10]]], (40, 30))
+    assert m is not None and m.size == (40, 30) and m.mode == "L"
+    arr = np.asarray(m)
+    assert arr[5, 10] > 200, arr[5, 10]
+    assert arr[25, 35] < 50, arr[25, 35]
+
+    assert mask_from_boxes([], (40, 30)) is None
+
+    # clipped box partially outside the frame must not raise
+    m2 = mask_from_boxes([[[30, 25], [50, 25], [50, 40], [30, 40]]], (40, 30))
+    assert m2 is not None and m2.size == (40, 30)
+
+    edge = detect_text_mask(make_text_image(p / "text.png"))
+    u = union_masks(edge, m)
+    assert u.size == edge.size
+    arr_u = np.asarray(u)
+    assert arr_u[5, 10] > 200  # box region survived the union
+    assert union_masks(None, m) is m
+    assert union_masks(edge, None) is edge
+
+
 def test_composite(tmp="/tmp/zinvis_textmask_test"):
     p = Path(tmp)
     p.mkdir(parents=True, exist_ok=True)
@@ -99,6 +126,7 @@ def test_keep_text_downscale(tmp="/tmp/zinvis_keeptext_downscale_test"):
 
 if __name__ == "__main__":
     test_detect_text()
+    test_mask_from_boxes()
     test_composite()
     test_keep_text_engine()
     test_keep_text_downscale()

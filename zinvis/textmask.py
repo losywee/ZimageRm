@@ -15,7 +15,7 @@ components (large display type regenerates fine and stays cleaned).
 from __future__ import annotations
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 try:
     import cv2 as _cv2
@@ -131,6 +131,39 @@ def detect_text_mask(image: Image.Image) -> Image.Image:
     if FEATHER_RADIUS > 0:
         m = m.filter(ImageFilter.GaussianBlur(FEATHER_RADIUS))
     return m
+
+
+def mask_from_boxes(boxes, size) -> Image.Image | None:
+    """L-mode mask filled inside OCR boxes (4-point quads), feathered.
+
+    OCR detection boxes are far more reliable than the edge heuristic;
+    both are unioned by the engine when available. Returns None when the
+    list is empty.
+    """
+    if not boxes:
+        return None
+    w, h = size
+    m = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(m)
+    for box in boxes:
+        pts = [(float(x), float(y)) for x, y in box]
+        if len(pts) >= 3:
+            draw.polygon(pts, fill=255)
+    if FEATHER_RADIUS > 0:
+        m = m.filter(ImageFilter.GaussianBlur(FEATHER_RADIUS))
+    return m
+
+
+def union_masks(a: Image.Image | None,
+                b: Image.Image | None) -> Image.Image | None:
+    """Pixel-wise maximum of two L-mode masks (b resized to a's size)."""
+    if a is None:
+        return b
+    if b is None:
+        return a
+    if b.size != a.size:
+        b = b.resize(a.size, Image.Resampling.LANCZOS)
+    return ImageChops.lighter(a.convert("L"), b.convert("L"))
 
 
 def composite_original(cleaned: Image.Image, original: Image.Image,

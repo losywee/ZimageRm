@@ -403,25 +403,34 @@ def test_ocr_capture(tmp="/tmp/zinvis_ocr_test"):
     p = Path(tmp)
     p.mkdir(parents=True, exist_ok=True)
     src = make_image(p / "in.png")
-    orig_et, orig_bn = ocr_mod.extract_text, ocr_mod.backend_name
+    orig_ed = ocr_mod.extract_detections
+    orig_bn = ocr_mod.backend_name
     try:
-        ocr_mod.extract_text = lambda img: ["caption line", "123"]
+        ocr_mod.extract_detections = lambda img: [
+            ([[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]],
+             "caption line"),
+            ([[0.0, 20.0], [30.0, 20.0], [30.0, 30.0], [0.0, 30.0]], "123"),
+        ]
         ocr_mod.backend_name = lambda: "fake"
 
         eng = setup_engine(p)
         r = eng.run_file(str(src), str(p / "out.png"), "sdxl")
         assert r.status == "cleaned", r.error
         assert r.text == ["caption line", "123"], r.text
+        assert len(r.text_boxes) == 2, r.text_boxes
         import json
 
-        assert json.loads(r.to_json())["text"] == ["caption line", "123"]
+        data = json.loads(r.to_json())
+        assert data["text"] == ["caption line", "123"]
+        assert len(data["text_boxes"]) == 2
 
         eng_off = ZinvisEngine(device="cpu", ocr=False)
         eng_off._backend_for = lambda name: FakeBackend()
         r = eng_off.run_file(str(src), str(p / "out2.png"), "sdxl")
-        assert r.text == [], r.text
+        assert r.text == [] and r.text_boxes == []
     finally:
-        ocr_mod.extract_text, ocr_mod.backend_name = orig_et, orig_bn
+        ocr_mod.extract_detections = orig_ed
+        ocr_mod.backend_name = orig_bn
 
 
 def test_ocr_skipped_files(tmp="/tmp/zinvis_ocr_skip_test"):
@@ -431,9 +440,12 @@ def test_ocr_skipped_files(tmp="/tmp/zinvis_ocr_skip_test"):
     p.mkdir(parents=True, exist_ok=True)
     make_image(p / "a.png")
     make_image(p / "b.png")
-    orig_et, orig_bn = ocr_mod.extract_text, ocr_mod.backend_name
+    orig_ed = ocr_mod.extract_detections
+    orig_bn = ocr_mod.backend_name
     try:
-        ocr_mod.extract_text = lambda img: ["pre-existing caption"]
+        ocr_mod.extract_detections = lambda img: [
+            ([[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]],
+             "pre-existing caption")]
         ocr_mod.backend_name = lambda: "fake"
 
         eng = setup_engine(p)
@@ -444,8 +456,42 @@ def test_ocr_skipped_files(tmp="/tmp/zinvis_ocr_skip_test"):
         assert br.summary["skipped"] == 2, br.summary
         assert all(r.text == ["pre-existing caption"] for r in br.images), \
             [r.text for r in br.images]
+        assert all(len(r.text_boxes) == 1 for r in br.images)
     finally:
-        ocr_mod.extract_text, ocr_mod.backend_name = orig_et, orig_bn
+        ocr_mod.extract_detections = orig_ed
+        ocr_mod.backend_name = orig_bn
+
+
+def test_keep_text_ocr_boxes(tmp="/tmp/zinvis_keepbox_test"):
+    import zinvis.ocr as ocr_mod
+
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    src = make_image(p / "in.png", size=(256, 192))
+    orig_ed = ocr_mod.extract_detections
+    orig_bn = ocr_mod.backend_name
+    try:
+        ocr_mod.extract_detections = lambda img: [
+            ([[0.0, 0.0], [64.0, 0.0], [64.0, 24.0], [0.0, 24.0]], "header")]
+        ocr_mod.backend_name = lambda: "fake"
+
+        eng = ZinvisEngine(device="cpu", keep_text=True)
+        eng._backend_for = lambda name: FakeBackend()
+        r = eng.run_file(str(src), str(p / "out.png"), "sdxl")
+        assert r.status == "cleaned", r.error
+        assert "keep_text" in r.stages, r.stages
+        assert len(r.text_boxes) == 1
+        assert not any("keep-text to restore" in w for w in r.warnings)
+
+        # without keep-text the OCR hint must fire
+        eng2 = ZinvisEngine(device="cpu")
+        eng2._backend_for = lambda name: FakeBackend()
+        r2 = eng2.run_file(str(src), str(p / "out2.png"), "sdxl")
+        assert any("keep-text to restore" in w for w in r2.warnings), \
+            r2.warnings
+    finally:
+        ocr_mod.extract_detections = orig_ed
+        ocr_mod.backend_name = orig_bn
 
 
 def test_new_fixes(tmp="/tmp/zinvis_new_fixes_test"):
@@ -526,5 +572,6 @@ if __name__ == "__main__":
     test_backoff_after_oom()
     test_ocr_capture()
     test_ocr_skipped_files()
+    test_keep_text_ocr_boxes()
     test_new_fixes()
     print("ENGINE OK")
