@@ -79,6 +79,14 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
     assert r.resolved_pipeline == "vae" and r.strength == 0.15
     assert any("weakest tier" in w for w in r.warnings), r.warnings
 
+    r = eng.run_file(str(src), str(p / "out7.png"), "sana")
+    assert r.resolved_pipeline == "sana" and r.strength == 0.30
+    assert any("sana floors" in w for w in r.warnings), r.warnings
+
+    r = eng.run_file(str(src), str(p / "out8.png"), "lcm")
+    assert r.resolved_pipeline == "lcm" and r.strength == 0.35
+    assert any("lcm floors" in w for w in r.warnings), r.warnings
+
 
 def test_auto_pipeline(tmp="/tmp/zinvis_auto_test"):
     p = Path(tmp)

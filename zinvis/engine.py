@@ -114,6 +114,16 @@ class ZinvisEngine:
                 "pre-pass, insufficient alone for hard carriers like "
                 "Gemini SynthID"
             )
+        if resolved == "sana":
+            warnings.append(
+                "sana floors are uncalibrated defaults; pass --strength "
+                "for known-hard watermarks"
+            )
+        if resolved == "lcm":
+            warnings.append(
+                "lcm floors are uncalibrated defaults; SD1.5 is 512-768 "
+                "native, pass --max-side 768 for best fidelity"
+            )
         if self.keep_text:
             warnings.append(
                 "keep-text: original pixels are restored over detected small "

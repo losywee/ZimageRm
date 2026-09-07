@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from .chroma import ChromaBackend
+from .lcm import LcmBackend
+from .sana import SanaBackend
 from .sdxl import SDXLBackend
 from .vae import VAEBackend
 from .zimage import ZImageBackend
 
-BACKEND_NAMES = ("duo", "chroma", "zimage", "sdxl", "vae")
+BACKEND_NAMES = ("duo", "chroma", "zimage", "sdxl", "vae", "sana", "lcm")
 
 
 class DuoBackend:
@@ -64,6 +66,10 @@ def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,
         )
     if name == "sdxl":
         return SDXLBackend(device=device, hf_token=hf_token, low_vram=low_vram)
+    if name == "sana":
+        return SanaBackend(device=device, hf_token=hf_token, low_vram=low_vram)
+    if name == "lcm":
+        return LcmBackend(device=device, hf_token=hf_token, low_vram=low_vram)
     if name == "vae":
         return VAEBackend(device=device, hf_token=hf_token)
     if name == "duo":

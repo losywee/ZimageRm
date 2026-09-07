@@ -30,6 +30,8 @@ input.png ──► [stage 1: Chroma1-HD img2img, strength = vendor floor]
 | `zimage` | Z-Image Turbo (`Tongyi-MAI/Z-Image-Turbo`) img2img, 8 steps, guidance 1.0 | — |
 | `duo` (default) | Chroma1 global pass | Z-Image Turbo refinement (default 0.18, PSNR-floor gated) |
 | `sdxl` | SDXL-base + **SDXL-Lightning** 4-step LoRA img2img, guidance 1.0 | — |
+| `sana` | SANA-Sprint 0.6B 2-step img2img (`Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers`), guidance 1.0 | — |
+| `lcm` | SD1.5 Dreamshaper + LCM img2img (`SimianLuo/LCM_Dreamshaper_v7`), guidance 1.0 | — |
 | `vae` | SD VAE (`sd-vae-ft-mse`) round-trip + latent noise (`strength` = noise std) | — |
 
 `duo` auto-collapses to `chroma` for OpenAI/Microsoft provenance (measured
@@ -40,25 +42,27 @@ lower floors there), mirroring published cross-engine calibration.
 | Pipeline | Fetch | VRAM | Use when |
 |---|---|---|---|
 | `vae` | **~350 MB** | minimal | weak watermarks, quick sweeps, pre-pass before a heavier engine |
+| `lcm` | **~4.3 GB** | ~4 GB | lightest diffusion tier (SD1.5, 512-768 native; use `--max-side 768`) |
+| `sana` | ~7.7 GB | ~7 GB | 2-step, ~10x faster per image than sdxl, 1024px native |
 | `sdxl` | ~8 GB | ~10 GB (cpu-offload with `--low-vram`) | calibrated middle tier — best strength/fidelity-per-GB |
 | `zimage` | ~21 GB | 8–10 GB (fp8 streaming) | best fidelity on 15 GB-class cards |
 | `chroma`/`duo` | ~33 GB | ~29 GiB | strongest disruption, big cards only |
 
 ## Strength policy (vendor floors)
 
-| Vendor | chroma / duo | sdxl | zimage | vae |
-|---|---|---|---|---|
-| google | 0.40 | 0.25 | 0.30 | 0.15 (noise std) |
-| openai | 0.09 | 0.15 | 0.12 | 0.15 |
-| microsoft | 0.125 | 0.25* | 0.15 | 0.15 |
-| meta | 0.17 | 0.25* | 0.15 | 0.15 |
-| unknown | 0.40 | 0.25 | 0.30 | 0.15 |
+| Vendor | chroma / duo | sdxl | sana | lcm | zimage | vae |
+|---|---|---|---|---|---|---|
+| google | 0.40 | 0.25 | 0.30 | 0.35 | 0.30 | 0.15 (noise std) |
+| openai | 0.09 | 0.15 | 0.15 | 0.20 | 0.12 | 0.15 |
+| microsoft | 0.125 | 0.25* | 0.30* | 0.35* | 0.15 | 0.15 |
+| meta | 0.17 | 0.25* | 0.30* | 0.35* | 0.15 | 0.15 |
+| unknown | 0.40 | 0.25 | 0.30 | 0.35 | 0.30 | 0.15 |
 
 Chroma and SDXL floors follow published oracle calibrations (fixed seed 0,
 fixed steps/guidance/prompt — the floors are bound to exactly that
-configuration). Z-Image floors are **uncalibrated defaults**; `*` = no
-measured SDXL cohort, falls to the unknown floor (conservative). Vendor is
-auto-sniffed from C2PA/XMP provenance in the file (or pass `--vendor`).
+configuration). Z-Image, SANA and LCM floors are **uncalibrated defaults**;
+`*` = no measured cohort, falls to the unknown floor (conservative). Vendor
+is auto-sniffed from C2PA/XMP provenance in the file (or pass `--vendor`).
 
 ## Small text (`--keep-text`)
 

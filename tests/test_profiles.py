@@ -26,6 +26,12 @@ def test_resolve_strength():
     assert profiles.resolve_strength("sdxl", "google") == 0.25
     assert profiles.resolve_strength("sdxl", "openai") == 0.15
     assert profiles.resolve_strength("sdxl", "meta") == 0.25
+    assert profiles.resolve_strength("sana", "google") == 0.30
+    assert profiles.resolve_strength("sana", "openai") == 0.15
+    assert profiles.resolve_strength("sana", "meta") == 0.30
+    assert profiles.resolve_strength("lcm", "google") == 0.35
+    assert profiles.resolve_strength("lcm", "openai") == 0.20
+    assert profiles.resolve_strength("lcm", None) == 0.35
     assert profiles.resolve_strength("vae", None) == 0.15
     assert profiles.resolve_strength("vae", None, 0.05) == 0.05
     try:
