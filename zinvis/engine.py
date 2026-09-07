@@ -51,8 +51,7 @@ class ZinvisEngine:
 
     def plan(self, pipeline: str | None, vendor: str | None,
              strength: float | None, seed: int | None,
-             image_path: Path | None = None,
-             low_vram: bool = False) -> dict:
+             image_path: Path | None = None) -> dict:
         warnings: list[str] = []
         v = vendor
         if v is None and image_path is not None:
@@ -60,6 +59,7 @@ class ZinvisEngine:
             if v:
                 warnings.append(f"vendor sniffed from provenance: {v}")
 
+        was_auto = pipeline is None
         resolved = pipeline
         if resolved is None:
             vram = vram_gb()
@@ -72,27 +72,27 @@ class ZinvisEngine:
             else:
                 resolved = "duo"
 
-        if resolved in ("duo", "chroma") and low_vram:
+        vram = vram_gb()
+        if resolved in ("duo", "chroma") and vram is not None \
+                and vram < CHROMA_MIN_VRAM_GB:
             warnings.append(
-                "--low-vram has no effect on chroma stages; a 12B bf16 "
-                "transformer cannot stream through sequential offload at "
-                "usable speed on this card"
+                f"warning: {resolved} needs ~29 GiB VRAM; this card has "
+                f"{vram:.0f} GiB and will OOM"
             )
-        if resolved in ("duo", "chroma"):
-            vram = vram_gb()
-            if vram is not None and vram < CHROMA_MIN_VRAM_GB:
-                warnings.append(
-                    f"warning: {resolved} needs ~29 GiB VRAM; this card has "
-                    f"{vram:.0f} GiB and will OOM"
-                )
 
-        resolved = profiles.resolve_pipeline(resolved, v)
+        resolved = profiles.resolve_pipeline(resolved, v,
+                                             route=was_auto and resolved == "duo")
         s = profiles.resolve_strength(resolved, v, strength)
         seed_v = profiles.resolve_seed(seed)
         if strength is None and resolved == "zimage":
             warnings.append(
                 "zimage floors are uncalibrated defaults; pass --strength "
                 "for known-hard watermarks"
+            )
+        if strength is not None and strength < 0.05:
+            warnings.append(
+                f"strength {strength} is very low; step count is capped at "
+                f"{profiles.MAX_REQUESTED_STEPS}"
             )
         return {
             "pipeline": resolved,
@@ -112,22 +112,9 @@ class ZinvisEngine:
                  pipeline: str | None, vendor: str | None = None,
                  strength: float | None = None, seed: int | None = None,
                  max_side: int = 0) -> ImageRecord:
-        from .devices import require_cuda
-
         t0 = now()
         in_p, out_p = Path(input_path), Path(output_path)
-        plan = self.plan(pipeline, vendor, strength, seed, in_p,
-                         low_vram=self.low_vram)
-
-        img = load_rgb(in_p)
-        orig_size = img.size
-        if max_side and max(img.size) > max_side:
-            scale = max_side / max(img.size)
-            img = img.resize(
-                (round(img.width * scale), round(img.height * scale)),
-                Image.Resampling.LANCZOS,
-            )
-
+        plan = self.plan(pipeline, vendor, strength, seed, in_p)
         record = ImageRecord(
             input=str(in_p), output=str(out_p),
             pipeline="auto" if pipeline is None else pipeline,
@@ -138,14 +125,25 @@ class ZinvisEngine:
 
         try:
             self._require_device()
+            img = load_rgb(in_p)
+            orig_size = img.size
+            working = img
+            if max_side and max(img.size) > max_side:
+                scale = max_side / max(img.size)
+                working = img.resize(
+                    (round(img.width * scale), round(img.height * scale)),
+                    Image.Resampling.LANCZOS,
+                )
             backend = self._backend_for(plan["pipeline"])
-            out = backend.run(img, plan["strength"], plan["seed"])
-            if out.size != orig_size:
+            out = backend.run(working, plan["strength"], plan["seed"])
+            if out.size != working.size:
+                out = out.resize(working.size, Image.Resampling.LANCZOS)
+            record.psnr = psnr(working, out)
+            if orig_size != working.size:
                 out = out.resize(orig_size, Image.Resampling.LANCZOS)
             save_stripped(out, out_p)
             record.stages = list(getattr(out, "info", {}).get(
                 "zinvis_stages", [plan["pipeline"]]))
-            record.psnr = psnr(img, out)
             record.status = "cleaned"
         except Exception as exc:
             record.status = "error"
@@ -167,7 +165,7 @@ class ZinvisEngine:
                     input=str(p), output=str(out_p),
                     pipeline="auto" if pipeline is None else pipeline,
                     resolved_pipeline="", vendor=vendor,
-                    strength=strength or 0.0,
+                    strength=strength if strength is not None else 0.0,
                     seed=profiles.resolve_seed(seed),
                     status="skipped_existing",
                 )
@@ -176,6 +174,9 @@ class ZinvisEngine:
                                   strength, seed, max_side)
             br.images.append(r)
             if progress is not None:
-                progress(r)
+                try:
+                    progress(r)
+                except Exception:
+                    pass
         br.seconds = now() - t0
         return br

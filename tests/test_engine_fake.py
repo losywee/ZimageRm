@@ -59,7 +59,7 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
 
     r = eng.run_file(str(src), str(p / "out2.png"), "duo")
     assert r.resolved_pipeline == "duo"
-    assert r.strength == 0.30
+    assert r.strength == 0.40
 
     r = eng.run_file(str(src), str(p / "out4.png"), "zimage")
     assert r.resolved_pipeline == "zimage"
@@ -107,7 +107,7 @@ def test_batch(tmp="/tmp/zinvis_batch_test"):
     make_image(p / "b.png")
     eng = setup_engine(p)
     br = eng.run_dir(str(p), str(p / "out"), "chroma", "openai")
-    assert br.summary["succeeded"] == 2, br.summary
+    assert br.summary["cleaned"] == 2, br.summary
     assert '"status"' in br.to_json()
 
     (p / "out" / "b.png").unlink()
@@ -117,9 +117,44 @@ def test_batch(tmp="/tmp/zinvis_batch_test"):
                      skip_existing=True, progress=seen.append)
     assert [r.status for r in br.images] == ["skipped_existing", "cleaned"]
     assert len(seen) == 2
+    assert br.summary["skipped"] == 1
+    assert br.summary["cleaned"] == 1
+
+
+def test_error_and_max_side(tmp="/tmp/zinvis_error_test"):
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    src = make_image(p / "in.png", size=(256, 192))
+    eng = setup_engine(p)
+
+    r = eng.run_file(str(p / "missing.png"), str(p / "x.png"), "chroma")
+    assert r.status == "error" and r.error
+    assert not (p / "x.png").exists()
+
+    r = eng.run_file(str(src), str(p / "y.png"), "chroma", max_side=64)
+    assert r.status == "cleaned", r.error
+    assert r.psnr > 30.0
+    out = Image.open(p / "y.png")
+    assert out.size == (256, 192)
+
+
+def test_vram_restore():
+    import zinvis.engine as em
+
+    original = em.vram_gb
+    try:
+        em.vram_gb = lambda: 15.0
+        eng = em.ZinvisEngine(device="cpu")
+        assert eng.plan(None, None, None, None)["pipeline"] == "zimage"
+    finally:
+        em.vram_gb = original
+    assert em.vram_gb is original
 
 
 if __name__ == "__main__":
     test_run_file()
+    test_auto_pipeline()
     test_batch()
+    test_error_and_max_side()
+    test_vram_restore()
     print("ENGINE OK")

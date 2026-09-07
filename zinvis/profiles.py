@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 PROFILES = ("duo", "chroma", "zimage")
-DEFAULT_PROFILE = "duo"
 PROFILE_SEED = 0
 
 CHROMA_FLOORS = {
@@ -29,11 +28,12 @@ _engine_by_vendor = {
 }
 
 
-def resolve_pipeline(pipeline: str, vendor: str | None) -> str:
+def resolve_pipeline(pipeline: str, vendor: str | None,
+                     route: bool = False) -> str:
     value = pipeline.strip().casefold().replace("_", "-")
     if value not in PROFILES:
         raise ValueError(f"unknown pipeline {pipeline!r}; choose from {PROFILES}")
-    if value != "duo":
+    if not route or value != "duo":
         return value
     return _engine_by_vendor.get((vendor or "").casefold(), "duo")
 
@@ -48,7 +48,7 @@ def resolve_strength(
             raise ValueError(f"strength must be in (0, 1]; got {strength}")
         return float(strength)
     v = (vendor or "").casefold()
-    if pipeline == "chroma":
+    if pipeline in ("chroma", "duo"):
         return CHROMA_FLOORS.get(v, CHROMA_UNKNOWN_FLOOR)
     return ZIMAGE_FLOORS.get(v, ZIMAGE_UNKNOWN_FLOOR)
 
@@ -57,7 +57,11 @@ def resolve_seed(seed: int | None) -> int:
     return PROFILE_SEED if seed is None else seed
 
 
+MAX_REQUESTED_STEPS = 100
+
+
 def requested_steps(effective_steps: int, strength: float) -> int:
     import math
 
-    return max(1, math.ceil(effective_steps / max(float(strength), 1e-6)))
+    steps = math.ceil(effective_steps / max(float(strength), 1e-6))
+    return max(1, min(steps, MAX_REQUESTED_STEPS))

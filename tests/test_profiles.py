@@ -8,10 +8,8 @@ from zinvis import profiles
 
 def test_resolve_pipeline():
     assert profiles.resolve_pipeline("duo", None) == "duo"
-    assert profiles.resolve_pipeline("duo", "openai") == "chroma"
-    assert profiles.resolve_pipeline("duo", "microsoft") == "chroma"
-    assert profiles.resolve_pipeline("duo", "google") == "duo"
-    assert profiles.resolve_pipeline("duo", "meta") == "duo"
+    assert profiles.resolve_pipeline("duo", "openai") == "duo"
+    assert profiles.resolve_pipeline("duo", "openai", route=True) == "chroma"
     assert profiles.resolve_pipeline("chroma", "google") == "chroma"
     assert profiles.resolve_pipeline("zimage", "openai") == "zimage"
 
@@ -39,6 +37,19 @@ def test_requested_steps():
     assert profiles.requested_steps(8, 0.18) == 45
     assert profiles.requested_steps(8, 0.30) == 27
     assert profiles.requested_steps(4, 2.0) == 2
+    assert profiles.requested_steps(4, 0.01) == profiles.MAX_REQUESTED_STEPS
+
+
+def test_duo_uses_chroma_floors():
+    assert profiles.resolve_strength("duo", "google") == 0.40
+    assert profiles.resolve_strength("duo", "openai") == 0.09
+    assert profiles.resolve_strength("duo", None) == 0.40
+
+
+def test_routing_only_when_requested():
+    assert profiles.resolve_pipeline("duo", "openai") == "duo"
+    assert profiles.resolve_pipeline("duo", "openai", route=True) == "chroma"
+    assert profiles.resolve_pipeline("duo", "google", route=True) == "duo"
 
 
 def test_resolve_seed():

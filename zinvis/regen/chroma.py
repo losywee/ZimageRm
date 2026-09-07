@@ -40,6 +40,15 @@ class ChromaBackend:
         self._pipe = pipe.to(self.device)
         return self._pipe
 
+    def unload(self):
+        if self._pipe is None:
+            return
+        import torch
+
+        del self._pipe
+        self._pipe = None
+        torch.cuda.empty_cache()
+
     def run(self, image, strength: float, seed: int):
         import torch
 

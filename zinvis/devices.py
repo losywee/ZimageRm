@@ -28,9 +28,3 @@ def require_cuda() -> str:
             "torch with CUDA support and run on an NVIDIA GPU"
         )
     return "cuda"
-
-
-def torch_dtype():
-    import torch
-
-    return torch.bfloat16

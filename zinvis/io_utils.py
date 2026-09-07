@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -12,15 +11,15 @@ JPEG_QUALITY = 95
 
 
 def load_rgb(path: str | Path) -> Image.Image:
-    img = Image.open(path)
-    return img.convert("RGB")
+    with Image.open(path) as img:
+        return img.convert("RGB")
 
 
 def save_stripped(img: Image.Image, path: str | Path) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    clean = Image.new("RGB", img.size)
-    clean.putdata(list(img.getdata()))
+    clean = img.copy()
+    clean.info = {}
     if p.suffix.lower() in (".jpg", ".jpeg"):
         clean.save(p, quality=JPEG_QUALITY)
     else:
@@ -34,11 +33,6 @@ def psnr(a: Image.Image, b: Image.Image) -> float:
     if mse == 0:
         return float("inf")
     return 10.0 * np.log10(255.0**2 / mse)
-
-
-def has_metadata(path: str | Path) -> bool:
-    img = Image.open(path)
-    return bool(img.info) or "exif" in img.info
 
 
 @dataclass
@@ -72,12 +66,16 @@ class BatchReport:
 
     @property
     def summary(self) -> dict:
-        ok = [r for r in self.images if r.error is None]
+        cleaned = [r for r in self.images if r.status == "cleaned"]
+        failed = [r for r in self.images if r.error is not None]
+        skipped = [r for r in self.images if r.status == "skipped_existing"]
         return {
             "total": len(self.images),
-            "succeeded": len(ok),
-            "failed": len(self.images) - len(ok),
-            "mean_psnr": float(np.mean([r.psnr for r in ok])) if ok else None,
+            "cleaned": len(cleaned),
+            "failed": len(failed),
+            "skipped": len(skipped),
+            "mean_psnr": (float(np.mean([r.psnr for r in cleaned]))
+                          if cleaned else None),
             "seconds": self.seconds,
         }
 

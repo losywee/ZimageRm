@@ -21,13 +21,13 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("input", help="image file or directory")
     ap.add_argument("output", help="output file or directory")
     ap.add_argument("--pipeline", default=None,
-                    choices=list(profiles.PROFILES) + [None],
+                    choices=list(profiles.PROFILES),
                     help="duo = Chroma1 + Z-Image refinement; default: auto "
                          "(zimage fp8-streaming on GPUs <30 GiB, duo otherwise)")
     ap.add_argument("--low-vram", action="store_true",
                     help="force Z-Image fp8 disk-streaming mode (small cards)")
     ap.add_argument("--vendor", default=None,
-                    choices=[None, "google", "openai", "microsoft", "meta"],
+                    choices=["google", "openai", "microsoft", "meta"],
                     help="strength cohort; auto-sniffs provenance when omitted")
     ap.add_argument("--strength", default=None, type=float)
     ap.add_argument("--seed", default=None, type=int)
@@ -85,7 +85,7 @@ def main(argv=None) -> int:
         Path(report_path).write_text(br.to_json())
         s = br.summary
         print(f"processed {s['total']} images in {s['seconds']:.1f}s | "
-              f"ok={s['succeeded']} failed={s['failed']}")
+              f"ok={s['cleaned']} failed={s['failed']} skipped={s['skipped']}")
         print("report:", report_path)
         return 0 if s["failed"] == 0 else 1
 

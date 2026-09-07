@@ -21,6 +21,7 @@ class DuoBackend:
         )
         self.refine_strength = refine_strength
         self.psnr_floor = psnr_floor
+        self.low_vram = low_vram
 
     def run(self, image, strength: float, seed: int):
         from ..io_utils import psnr
@@ -28,6 +29,10 @@ class DuoBackend:
         stages: list[str] = []
         out = self.chroma.run(image, strength, seed)
         stages.append(f"chroma(s={strength:.3f},psnr={psnr(image, out):.1f})")
+
+        if self.low_vram:
+            self.chroma.unload()
+            stages.append("chroma_unloaded(low_vram)")
 
         refined = self.zimage.run(out, self.refine_strength, seed)
         drop = psnr(image, refined)

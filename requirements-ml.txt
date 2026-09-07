@@ -1,0 +1,6 @@
+torch>=2.0
+diffusers>=0.35
+transformers>=4.40
+accelerate>=0.20
+safetensors>=0.4
+diffsynth-studio>=1.1
