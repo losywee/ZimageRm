@@ -133,13 +133,17 @@ class ZImageLiteBackend:
         tok_kwargs = {"token": self.hf_token} if self.hf_token else {}
 
         # 1. Text encoder pass first (8 GB), then free it entirely so the
-        #    GGUF transformer never stacks on top of it in RAM.
+        #    GGUF transformer never stacks on top of it in VRAM. no_grad is
+        #    essential: embeddings that carry an autograd graph pin every
+        #    encoder weight (~8 GB) on the GPU even after `del te`.
         tokenizer = AutoTokenizer.from_pretrained(
             ZIMAGE_MODEL_ID, subfolder="tokenizer", **tok_kwargs)
         te = Qwen3Model.from_pretrained(
             ZIMAGE_MODEL_ID, subfolder="text_encoder",
             torch_dtype=dtype, **tok_kwargs).to(self.device)
-        embeds = self._encode_once(tokenizer, te, torch, self.device)
+        with torch.no_grad():
+            embeds = self._encode_once(tokenizer, te, torch, self.device)
+        embeds = [e.detach().to("cpu") for e in embeds]
         del te
         gc.collect()
         try:
@@ -191,6 +195,7 @@ class ZImageLiteBackend:
         import torch
 
         pipe = self._load()
+        embeds = [e.to(self.device) for e in self._embeds]
         orig_size = image.size
         target = zimage_lite_target_size(*orig_size)
         prepared = image if image.size == target else image.resize(
@@ -199,7 +204,7 @@ class ZImageLiteBackend:
         generator = torch.Generator(device=self.device).manual_seed(seed)
         result = pipe(
             prompt=None,
-            prompt_embeds=self._embeds,
+            prompt_embeds=embeds,
             image=prepared,
             strength=float(strength),
             num_inference_steps=ZIMAGE_LITE_STEPS,
