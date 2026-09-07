@@ -21,6 +21,16 @@ def zimage_target_size(width: int, height: int) -> tuple[int, int]:
     )
 
 
+def vram_limit_gb():
+    """Free-VRAM budget (total minus headroom) for DiffSynth's paging manager."""
+    import torch
+
+    try:
+        return max(1.0, torch.cuda.mem_get_info("cuda")[1] / 1024**3 - 0.5)
+    except Exception:
+        return None
+
+
 class ZImageBackend:
     name = "zimage"
 
@@ -108,6 +118,7 @@ class ZImageBackend:
             tokenizer_config=ModelConfig(
                 model_id=ZIMAGE_MODEL_ID, origin_file_pattern="tokenizer/",
             ),
+            vram_limit=vram_limit_gb(),
         )
         self._pipe = pipe
         self.mode = "diffsynth"
