@@ -22,6 +22,29 @@ def zimage_lite_target_size(width: int, height: int) -> tuple[int, int]:
     )
 
 
+def list_repo_gguf_files(token=None):
+    """List the .gguf files available in the unsloth quant repo."""
+    from huggingface_hub import HfApi
+
+    try:
+        files = HfApi(token=token).list_repo_files(ZIMAGE_GGUF_REPO)
+    except Exception as exc:
+        raise RuntimeError(
+            f"could not list files in {ZIMAGE_GGUF_REPO}: {exc}") from exc
+    return sorted(f for f in files if f.lower().endswith(".gguf"))
+
+
+def pick_gguf_filename(available, preset):
+    """Case-insensitive match of the preset filename against the repo listing."""
+    wanted = GGUF_FILES[preset].lower()
+    for name in available:
+        if name.lower() == wanted:
+            return name
+    raise ValueError(
+        f"no GGUF file matching {GGUF_FILES[preset]!r} in "
+        f"{ZIMAGE_GGUF_REPO}; available: {sorted(available)}")
+
+
 class ZImageLiteBackend:
     """Z-Image Turbo with a GGUF-quantized transformer (unsloth) — the
     lightweight zimage tier: ~15.4 GB fetch (Q8) vs ~33 GB for the
@@ -62,6 +85,31 @@ class ZImageLiteBackend:
         hidden = text_encoder(input_ids=ids, attention_mask=masks,
                               output_hidden_states=True).hidden_states[-2]
         return [hidden[i][masks[i]] for i in range(len(hidden))]
+
+    def _fetch_gguf_file(self):
+        """Download the configured GGUF checkpoint into the local HF cache and
+        return its path. diffusers' from_single_file only accepts a local
+        file path or a full https URL — a `repo_id/filename` string raises
+        "Invalid `pretrained_model_name_or_path` provided" on recent
+        diffusers versions, so the download is resolved here."""
+        from huggingface_hub import hf_hub_download
+
+        filename = GGUF_FILES[self.gguf]
+        try:
+            return hf_hub_download(
+                repo_id=ZIMAGE_GGUF_REPO, filename=filename,
+                token=self.hf_token)
+        except Exception as exc:
+            available = list_repo_gguf_files(self.hf_token)
+            try:
+                filename = pick_gguf_filename(available, self.gguf)
+            except ValueError as match_exc:
+                raise RuntimeError(
+                    f"could not download GGUF checkpoint from "
+                    f"{ZIMAGE_GGUF_REPO}: {exc}") from match_exc
+            return hf_hub_download(
+                repo_id=ZIMAGE_GGUF_REPO, filename=filename,
+                token=self.hf_token)
 
     def _load(self):
         if self._pipe is not None:
@@ -105,7 +153,6 @@ class ZImageLiteBackend:
             ZIMAGE_MODEL_ID, subfolder="vae", torch_dtype=dtype, **tok_kwargs)
         scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained(
             ZIMAGE_MODEL_ID, subfolder="scheduler", **tok_kwargs)
-        gguf_file = GGUF_FILES[self.gguf]
         kwargs = {
             "quantization_config": GGUFQuantizationConfig(
                 compute_dtype=dtype),
@@ -113,9 +160,10 @@ class ZImageLiteBackend:
         }
         if self.hf_token:
             kwargs["token"] = self.hf_token
+        gguf_path = self._fetch_gguf_file()
         transformer = ZImageTransformer2DModel.from_single_file(
-            f"{ZIMAGE_GGUF_REPO}/{gguf_file}",
-            config=ZIMAGE_MODEL_ID, subfolder="transformer", **kwargs)
+            gguf_path, config=ZIMAGE_MODEL_ID, subfolder="transformer",
+            **kwargs)
 
         pipe = ZImageImg2ImgPipeline(
             scheduler=scheduler, vae=vae, text_encoder=None,

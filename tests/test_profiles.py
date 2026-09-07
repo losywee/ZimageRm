@@ -116,6 +116,24 @@ def test_target_size_grids():
             assert tw >= div and th >= div
 
 
+def test_gguf_filename_resolution():
+    from zinvis.regen.zimage_lite import GGUF_FILES, pick_gguf_filename
+
+    assert pick_gguf_filename(["z-image-turbo-Q8_0.gguf", "readme.md"],
+                              "q8") == "z-image-turbo-Q8_0.gguf"
+    assert pick_gguf_filename(["Z-Image-Turbo-Q8_0.GGUF"], "q8") == \
+        "Z-Image-Turbo-Q8_0.GGUF"
+    assert pick_gguf_filename(["z-image-turbo-Q4_K_M.gguf"], "q4") == \
+        "z-image-turbo-Q4_K_M.gguf"
+    try:
+        pick_gguf_filename(["totally-other-model-Q8_0.gguf"], "q8")
+        raise AssertionError("expected ValueError")
+    except ValueError:
+        pass
+    assert GGUF_FILES["q8"].endswith(".gguf")
+    assert GGUF_FILES["q4"].endswith(".gguf")
+
+
 if __name__ == "__main__":
     test_resolve_pipeline()
     test_resolve_strength()
@@ -123,4 +141,5 @@ if __name__ == "__main__":
     test_resolve_seed()
     test_lcm_steps()
     test_target_size_grids()
+    test_gguf_filename_resolution()
     print("PROFILES OK")
