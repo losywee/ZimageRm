@@ -10,6 +10,17 @@ def cuda_available() -> bool:
         return False
 
 
+def vram_gb():
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return torch.cuda.get_device_properties(0).total_memory / 1024**3
+    except ImportError:
+        return None
+    return None
+
+
 def require_cuda() -> str:
     if not cuda_available():
         raise RuntimeError(

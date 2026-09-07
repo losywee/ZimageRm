@@ -70,6 +70,36 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
     assert r.strength == 0.2
 
 
+def test_auto_pipeline(tmp="/tmp/zinvis_auto_test"):
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    src = make_image(p / "in.png")
+    eng = setup_engine(p)
+
+    engine_mod.vram_gb = lambda: 15.0
+    plan = eng.plan(None, None, None, None)
+    assert plan["pipeline"] == "zimage", plan
+    assert any("auto:" in w for w in plan["warnings"])
+
+    r = eng.run_file(str(src), str(p / "auto_out.png"), None)
+    assert r.resolved_pipeline == "zimage"
+    assert r.pipeline == "auto"
+    assert r.strength == 0.30
+
+    engine_mod.vram_gb = lambda: 80.0
+    plan = eng.plan(None, "openai", None, None)
+    assert plan["pipeline"] == "chroma", plan
+
+    engine_mod.vram_gb = lambda: None
+    plan = eng.plan(None, None, None, None)
+    assert plan["pipeline"] == "duo", plan
+
+    eng_small = ZinvisEngine(device="cpu", hf_token=None, low_vram=True)
+    eng_small._backend_for = lambda name: FakeBackend()
+    r = eng_small.run_file(str(src), str(p / "lv.png"), "zimage")
+    assert r.status == "cleaned"
+
+
 def test_batch(tmp="/tmp/zinvis_batch_test"):
     p = Path(tmp)
     p.mkdir(parents=True, exist_ok=True)

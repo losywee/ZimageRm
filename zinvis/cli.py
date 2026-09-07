@@ -20,9 +20,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ap.add_argument("input", help="image file or directory")
     ap.add_argument("output", help="output file or directory")
-    ap.add_argument("--pipeline", default=profiles.DEFAULT_PROFILE,
-                    choices=list(profiles.PROFILES),
-                    help="duo = Chroma1 global pass + Z-Image Turbo refinement")
+    ap.add_argument("--pipeline", default=None,
+                    choices=list(profiles.PROFILES) + [None],
+                    help="duo = Chroma1 + Z-Image refinement; default: auto "
+                         "(zimage fp8-streaming on GPUs <30 GiB, duo otherwise)")
+    ap.add_argument("--low-vram", action="store_true",
+                    help="force Z-Image fp8 disk-streaming mode (small cards)")
     ap.add_argument("--vendor", default=None,
                     choices=[None, "google", "openai", "microsoft", "meta"],
                     help="strength cohort; auto-sniffs provenance when omitted")
@@ -48,6 +51,7 @@ def main(argv=None) -> int:
         hf_token=args.hf_token,
         refine_strength=args.refine_strength,
         psnr_floor=args.psnr_floor,
+        low_vram=args.low_vram,
     )
     in_path = Path(args.input)
 

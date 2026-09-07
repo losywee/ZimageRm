@@ -76,7 +76,7 @@ downloads.
 ## Usage
 
 ```bash
-zinvis in.png out.png                                  # duo, auto vendor, seed 0
+zinvis in.png out.png                                  # auto pipeline, auto vendor, seed 0
 zinvis in.png out.png --pipeline chroma --vendor google
 zinvis in.png out.png --pipeline zimage --strength 0.35 --seed 7
 zinvis ./images/ ./clean/ --glob '*.png' --report clean/summary.json
@@ -85,6 +85,21 @@ zinvis ./images/ ./clean/ --glob '*.png' --report clean/summary.json
 Exit codes: `0` ok, `1` error (per-image errors are captured in batch
 reports and the run continues). Output metadata (EXIF/XMP/C2PA-style text
 chunks) is always stripped on write.
+
+## Small GPUs (lightweight mode)
+
+`--pipeline` defaults to **auto**, resolved from your VRAM:
+
+| VRAM | auto resolves to | Weight mode |
+|---|---|---|
+| < 30 GiB | `zimage` | **fp8 disk-streaming** (DiffSynth): ~8–10 GiB VRAM, slower per image |
+| >= 30 GiB | `duo` | bf16 resident |
+
+On a 15 GB card: `auto` (or explicit `--pipeline zimage`) runs Z-Image Turbo
+fp8-streaming end-to-end. `chroma`/`duo` need ~29 GiB and will OOM — the app
+warns loudly before attempting. `--low-vram` forces streaming mode
+everywhere it applies. Trade-off: streaming is noticeably slower per image
+(weights shuttle disk -> CPU -> GPU), but nothing else changes.
 
 ## Tests
 

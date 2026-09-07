@@ -12,9 +12,13 @@ class DuoBackend:
     name = "duo"
 
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
-                 refine_strength: float = 0.18, psnr_floor: float = 24.0):
+                 refine_strength: float = 0.18, psnr_floor: float = 24.0,
+                 low_vram: bool = False):
         self.chroma = ChromaBackend(device=device, hf_token=hf_token)
-        self.zimage = ZImageBackend(device=device, hf_token=hf_token)
+        self.zimage = ZImageBackend(
+            device=device, hf_token=hf_token,
+            prefer="diffsynth" if low_vram else "diffusers",
+        )
         self.refine_strength = refine_strength
         self.psnr_floor = psnr_floor
 
@@ -37,11 +41,15 @@ class DuoBackend:
 
 
 def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,
-                  **kwargs):
+                  low_vram: bool = False, **kwargs):
     if name == "chroma":
         return ChromaBackend(device=device, hf_token=hf_token)
     if name == "zimage":
-        return ZImageBackend(device=device, hf_token=hf_token)
+        return ZImageBackend(
+            device=device, hf_token=hf_token,
+            prefer="diffsynth" if low_vram else "diffusers",
+        )
     if name == "duo":
-        return DuoBackend(device=device, hf_token=hf_token, **kwargs)
+        return DuoBackend(device=device, hf_token=hf_token,
+                          low_vram=low_vram, **kwargs)
     raise ValueError(f"unknown backend {name!r}; choose from {BACKEND_NAMES}")
