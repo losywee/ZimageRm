@@ -1,0 +1,63 @@
+from __future__ import annotations
+
+PROFILES = ("duo", "chroma", "zimage")
+DEFAULT_PROFILE = "duo"
+PROFILE_SEED = 0
+
+CHROMA_FLOORS = {
+    "google": 0.40,
+    "openai": 0.09,
+    "microsoft": 0.125,
+    "meta": 0.17,
+}
+CHROMA_UNKNOWN_FLOOR = 0.40
+
+ZIMAGE_FLOORS = {
+    "google": 0.30,
+    "openai": 0.12,
+    "microsoft": 0.15,
+    "meta": 0.15,
+}
+ZIMAGE_UNKNOWN_FLOOR = 0.30
+
+DUO_REFINE_STRENGTH = 0.18
+DEFAULT_PSNR_FLOOR = 24.0
+
+_engine_by_vendor = {
+    "openai": "chroma",
+    "microsoft": "chroma",
+}
+
+
+def resolve_pipeline(pipeline: str, vendor: str | None) -> str:
+    value = pipeline.strip().casefold().replace("_", "-")
+    if value not in PROFILES:
+        raise ValueError(f"unknown pipeline {pipeline!r}; choose from {PROFILES}")
+    if value != "duo":
+        return value
+    return _engine_by_vendor.get((vendor or "").casefold(), "duo")
+
+
+def resolve_strength(
+    pipeline: str,
+    vendor: str | None,
+    strength: float | None = None,
+) -> float:
+    if strength is not None:
+        if not 0.0 < strength <= 1.0:
+            raise ValueError(f"strength must be in (0, 1]; got {strength}")
+        return float(strength)
+    v = (vendor or "").casefold()
+    if pipeline == "chroma":
+        return CHROMA_FLOORS.get(v, CHROMA_UNKNOWN_FLOOR)
+    return ZIMAGE_FLOORS.get(v, ZIMAGE_UNKNOWN_FLOOR)
+
+
+def resolve_seed(seed: int | None) -> int:
+    return PROFILE_SEED if seed is None else seed
+
+
+def requested_steps(effective_steps: int, strength: float) -> int:
+    import math
+
+    return max(1, math.ceil(effective_steps / max(float(strength), 1e-6)))

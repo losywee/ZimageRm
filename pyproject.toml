@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zinvis"
+version = "0.1.0"
+description = "Remove invisible AI image watermarks by diffusion regeneration with Z-Image Turbo and Chroma1"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+dependencies = ["numpy>=1.24", "pillow>=10.0"]
+
+[project.optional-dependencies]
+diffusion = ["torch>=2.0", "diffusers>=0.35", "transformers>=4.40", "accelerate>=0.20", "safetensors>=0.4", "diffsynth-studio>=1.1"]
+zimage = ["torch>=2.0", "diffsynth-studio>=1.1", "transformers>=4.40", "accelerate>=0.20", "safetensors>=0.4"]
+
+[project.scripts]
+zinvis = "zinvis.cli:main"
