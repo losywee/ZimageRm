@@ -90,6 +90,12 @@ class ZinvisEngine:
                 "zimage floors are uncalibrated defaults; pass --strength "
                 "for known-hard watermarks"
             )
+        if resolved == "vae":
+            warnings.append(
+                "vae is the weakest tier: fine for weak watermarks and as a "
+                "pre-pass, insufficient alone for hard carriers like "
+                "Gemini SynthID"
+            )
         if strength is not None and strength < 0.05:
             warnings.append(
                 f"strength {strength} is very low; step count is capped at "

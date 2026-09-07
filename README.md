@@ -29,24 +29,36 @@ input.png ──► [stage 1: Chroma1-HD img2img, strength = vendor floor]
 | `chroma` | Chroma1-HD (`lodestones/Chroma1-HD`, Apache-2.0) img2img, 4 effective steps, guidance 5.0 | — |
 | `zimage` | Z-Image Turbo (`Tongyi-MAI/Z-Image-Turbo`) img2img, 8 steps, guidance 1.0 | — |
 | `duo` (default) | Chroma1 global pass | Z-Image Turbo refinement (default 0.18, PSNR-floor gated) |
+| `sdxl` | SDXL-base + **SDXL-Lightning** 4-step LoRA img2img, guidance 1.0 | — |
+| `vae` | SD VAE (`sd-vae-ft-mse`) round-trip + latent noise (`strength` = noise std) | — |
 
 `duo` auto-collapses to `chroma` for OpenAI/Microsoft provenance (measured
 lower floors there), mirroring published cross-engine calibration.
 
+## Lightweight tiers
+
+| Pipeline | Fetch | VRAM | Use when |
+|---|---|---|---|
+| `vae` | **~350 MB** | minimal | weak watermarks, quick sweeps, pre-pass before a heavier engine |
+| `sdxl` | ~8 GB | ~10 GB (cpu-offload with `--low-vram`) | calibrated middle tier — best strength/fidelity-per-GB |
+| `zimage` | ~21 GB | 8–10 GB (fp8 streaming) | best fidelity on 15 GB-class cards |
+| `chroma`/`duo` | ~33 GB | ~29 GiB | strongest disruption, big cards only |
+
 ## Strength policy (vendor floors)
 
-| Vendor | chroma / duo | zimage |
-|---|---|---|
-| google | 0.40 | 0.30 |
-| openai | 0.09 | 0.12 |
-| microsoft | 0.125 | 0.15 |
-| meta | 0.17 | 0.15 |
-| unknown | 0.40 | 0.30 |
+| Vendor | chroma / duo | sdxl | zimage | vae |
+|---|---|---|---|---|
+| google | 0.40 | 0.25 | 0.30 | 0.15 (noise std) |
+| openai | 0.09 | 0.15 | 0.12 | 0.15 |
+| microsoft | 0.125 | 0.25* | 0.15 | 0.15 |
+| meta | 0.17 | 0.25* | 0.15 | 0.15 |
+| unknown | 0.40 | 0.25 | 0.30 | 0.15 |
 
-Chroma floors follow the published 2026-08 oracle calibration (fixed seed 0,
-4 effective steps, guidance 5.0). Z-Image floors are **uncalibrated defaults**
-— override with `--strength` for known-hard cases. Vendor is auto-sniffed
-from C2PA/XMP provenance in the file (or pass `--vendor`).
+Chroma and SDXL floors follow published oracle calibrations (fixed seed 0,
+fixed steps/guidance/prompt — the floors are bound to exactly that
+configuration). Z-Image floors are **uncalibrated defaults**; `*` = no
+measured SDXL cohort, falls to the unknown floor (conservative). Vendor is
+auto-sniffed from C2PA/XMP provenance in the file (or pass `--vendor`).
 
 ## Install
 

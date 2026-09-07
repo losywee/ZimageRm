@@ -23,6 +23,11 @@ def test_resolve_strength():
     assert profiles.resolve_strength("zimage", "google") == 0.30
     assert profiles.resolve_strength("zimage", None) == 0.30
     assert profiles.resolve_strength("chroma", "google", 0.55) == 0.55
+    assert profiles.resolve_strength("sdxl", "google") == 0.25
+    assert profiles.resolve_strength("sdxl", "openai") == 0.15
+    assert profiles.resolve_strength("sdxl", "meta") == 0.25
+    assert profiles.resolve_strength("vae", None) == 0.15
+    assert profiles.resolve_strength("vae", None, 0.05) == 0.05
     try:
         profiles.resolve_strength("chroma", "google", 0.0)
         raise AssertionError("expected ValueError")

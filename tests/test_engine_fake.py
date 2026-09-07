@@ -69,6 +69,13 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
                      strength=0.2, seed=3)
     assert r.strength == 0.2
 
+    r = eng.run_file(str(src), str(p / "out5.png"), "sdxl")
+    assert r.resolved_pipeline == "sdxl" and r.strength == 0.25
+
+    r = eng.run_file(str(src), str(p / "out6.png"), "vae")
+    assert r.resolved_pipeline == "vae" and r.strength == 0.15
+    assert any("weakest tier" in w for w in r.warnings), r.warnings
+
 
 def test_auto_pipeline(tmp="/tmp/zinvis_auto_test"):
     p = Path(tmp)
