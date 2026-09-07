@@ -84,10 +84,27 @@ class ZImageBackend:
             "computation_dtype": torch.bfloat16,
             "computation_device": "cuda",
         }
+        model_configs = [
+            ModelConfig(
+                model_id=ZIMAGE_MODEL_ID,
+                origin_file_pattern="transformer/*.safetensors",
+                **config,
+            ),
+            ModelConfig(
+                model_id=ZIMAGE_MODEL_ID,
+                origin_file_pattern="text_encoder/*.safetensors",
+                **config,
+            ),
+            ModelConfig(
+                model_id=ZIMAGE_MODEL_ID,
+                origin_file_pattern="vae/diffusion_pytorch_model.safetensors",
+                **config,
+            ),
+        ]
         pipe = ZImagePipeline.from_pretrained(
             torch_dtype=torch.bfloat16,
             device=self.device,
-            model_configs=[ModelConfig(model_id=ZIMAGE_MODEL_ID, **config)],
+            model_configs=model_configs,
             tokenizer_config=ModelConfig(
                 model_id=ZIMAGE_MODEL_ID, origin_file_pattern="tokenizer/",
             ),
