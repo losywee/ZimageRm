@@ -59,6 +59,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    if args.stream and args.cpu_offload:
+        build_parser().error("--stream and --cpu-offload are mutually exclusive")
     stream = True if args.stream else (False if args.cpu_offload else None)
     eng = ZinvisEngine(
         hf_token=args.hf_token,

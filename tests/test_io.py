@@ -59,8 +59,25 @@ def test_exif_orientation(tmp="/tmp/zinvis_exif_test"):
     assert load_rgb(src).size == (80, 40)
 
 
+def test_summary_json_safe(tmp="/tmp/zinvis_summary_test"):
+    from zinvis.io_utils import BatchReport, ImageRecord
+
+    br = BatchReport(in_dir="a", out_dir="b", images=[
+        ImageRecord(input="x", output="y", pipeline="p",
+                    resolved_pipeline="p", vendor=None, strength=0.1,
+                    seed=0, status="cleaned", psnr=float("inf")),
+        ImageRecord(input="x2", output="y2", pipeline="p",
+                    resolved_pipeline="p", vendor=None, strength=0.1,
+                    seed=0, status="cleaned", psnr=30.0),
+    ])
+    s = br.summary
+    assert s["mean_psnr"] == 30.0, s
+    assert "Infinity" not in br.to_json()
+
+
 if __name__ == "__main__":
     test_save_strips_metadata()
     test_psnr()
     test_exif_orientation()
+    test_summary_json_safe()
     print("IO OK")

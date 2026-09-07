@@ -116,7 +116,7 @@ Colab already ships CUDA torch — do **not** install `requirements-ml.txt`
 | Pipeline | Fetches | Size |
 |---|---|---|
 | `chroma` / `duo` | `lodestones/Chroma1-HD` (bf16) | ~27.5 GB |
-| `zimage` | `Tongyi-MAI/Z-Image-Turbo` | ~12 GB |
+| `zimage` | `Tongyi-MAI/Z-Image-Turbo` | ~21 GB |
 
 Weights are downloaded once into the Hugging Face cache
 (`~/.cache/huggingface/hub`) and reused from disk on every later run.

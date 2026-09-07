@@ -56,7 +56,10 @@ class ImageRecord:
     def to_json(self) -> str:
         import json
 
-        return json.dumps(asdict(self), indent=2, default=str)
+        d = asdict(self)
+        if not np.isfinite(d["psnr"]):
+            d["psnr"] = None
+        return json.dumps(d, indent=2, default=str)
 
 
 @dataclass
@@ -71,25 +74,31 @@ class BatchReport:
         cleaned = [r for r in self.images if r.status == "cleaned"]
         failed = [r for r in self.images if r.error is not None]
         skipped = [r for r in self.images if r.status == "skipped_existing"]
+        psnrs = [r.psnr for r in cleaned if np.isfinite(r.psnr)]
         return {
             "total": len(self.images),
             "cleaned": len(cleaned),
             "failed": len(failed),
             "skipped": len(skipped),
-            "mean_psnr": (float(np.mean([r.psnr for r in cleaned]))
-                          if cleaned else None),
+            "mean_psnr": (float(np.mean(psnrs)) if psnrs else None),
             "seconds": self.seconds,
         }
 
     def to_json(self) -> str:
         import json
 
+        images = []
+        for r in self.images:
+            d = asdict(r)
+            if not np.isfinite(d["psnr"]):
+                d["psnr"] = None
+            images.append(d)
         return json.dumps(
             {
                 "in_dir": self.in_dir,
                 "out_dir": self.out_dir,
                 "summary": self.summary,
-                "images": [asdict(r) for r in self.images],
+                "images": images,
             },
             indent=2,
             default=str,

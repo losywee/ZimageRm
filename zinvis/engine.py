@@ -190,11 +190,12 @@ class ZinvisEngine:
             if out.size != working.size:
                 out = out.resize(working.size, Image.Resampling.LANCZOS)
             use_keep = self.keep_text if keep_text is None else keep_text
+            text_mask = None
             if use_keep:
                 from .textmask import composite_original, detect_text_mask
 
-                mask = detect_text_mask(working)
-                out = composite_original(out, working, mask)
+                text_mask = detect_text_mask(working)
+                out = composite_original(out, working, text_mask)
             record.psnr = psnr(working, out)
             backoff_stage = None
             if (record.psnr < BACKOFF_PSNR_FLOOR
@@ -214,12 +215,11 @@ class ZinvisEngine:
                     if retry.size != working.size:
                         retry = retry.resize(working.size,
                                              Image.Resampling.LANCZOS)
-                    if use_keep:
-                        from .textmask import composite_original, \
-                            detect_text_mask
+                    if text_mask is not None:
+                        from .textmask import composite_original
 
                         retry = composite_original(
-                            retry, working, detect_text_mask(working))
+                            retry, working, text_mask)
                     retry_psnr = psnr(working, retry)
                     if retry_psnr > record.psnr:
                         out = retry
