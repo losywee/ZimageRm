@@ -110,7 +110,7 @@ Colab already ships CUDA torch — do **not** install `requirements-ml.txt`
 !git clone https://github.com/losywee/ZimageRm /content/ZimageRm
 %cd /content/ZimageRm
 !pip uninstall -y torchao
-!pip install -r requirements.txt diffusers transformers accelerate peft safetensors 'diffsynth>=2.0.17,<3'
+!pip install -r requirements.txt diffusers transformers accelerate peft safetensors 'diffsynth>=2.0.17,<3' beautifulsoup4 ftfy
 !pip install -e . --no-deps
 !zinvis /content/drive/MyDrive/2026090701 /content/drive/MyDrive/2026090701clean/ \
   --glob '*.png' --pipeline sdxl --low-vram --skip-existing
@@ -166,10 +166,12 @@ everywhere it applies. Trade-off: streaming is noticeably slower per image
 ## Tests
 
 ```bash
-python tests/test_profiles.py     # floors, routing, step compensation math
-python tests/test_vendor.py       # provenance byte-scan
-python tests/test_io.py           # metadata stripping, PSNR
-python tests/test_engine_fake.py  # orchestration with a faked backend
+python tests/test_profiles.py        # floors, routing, step compensation math
+python tests/test_vendor.py          # provenance byte-scan
+python tests/test_io.py              # metadata stripping, PSNR, EXIF, JSON
+python tests/test_engine_fake.py     # orchestration with a faked backend
+python tests/test_textmask.py        # keep-text detector + composite
+python tests/test_torchao_compat.py  # peft/torchao gate shim
 ```
 
 ML-boundary code is guarded behind imports so all of the above runs without
