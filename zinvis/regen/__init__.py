@@ -4,10 +4,12 @@ from .chroma import ChromaBackend
 from .lcm import LcmBackend
 from .sana import SanaBackend
 from .sdxl import SDXLBackend
+from .sdxl_canny import SDXLCannyBackend
 from .vae import VAEBackend
 from .zimage import ZImageBackend
 
-BACKEND_NAMES = ("duo", "chroma", "zimage", "sdxl", "vae", "sana", "lcm")
+BACKEND_NAMES = ("duo", "chroma", "zimage", "sdxl", "sdxl-canny", "vae",
+                 "sana", "lcm")
 
 
 class DuoBackend:
@@ -66,6 +68,9 @@ def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,
         )
     if name == "sdxl":
         return SDXLBackend(device=device, hf_token=hf_token, low_vram=low_vram)
+    if name == "sdxl-canny":
+        return SDXLCannyBackend(device=device, hf_token=hf_token,
+                                low_vram=low_vram)
     if name == "sana":
         return SanaBackend(device=device, hf_token=hf_token, low_vram=low_vram)
     if name == "lcm":

@@ -103,9 +103,10 @@ class ZinvisEngine:
         resolved = profiles.resolve_pipeline(resolved, v,
                                              route=was_auto and resolved == "duo")
         s = profiles.resolve_strength(resolved, v, strength)
-        if resolved == "sdxl" and s < profiles.SDXL_MIN_STRENGTH:
+        if resolved in ("sdxl", "sdxl-canny") \
+                and s < profiles.SDXL_MIN_STRENGTH:
             warnings.append(
-                f"sdxl strength {s} is below the Lightning distillation "
+                f"{resolved} strength {s} is below the Lightning distillation "
                 f"floor ({profiles.SDXL_MIN_STRENGTH}); clamping — lower "
                 "values produce out-of-schedule noise"
             )
@@ -121,6 +122,12 @@ class ZinvisEngine:
                 "vae is the weakest tier: fine for weak watermarks and as a "
                 "pre-pass, insufficient alone for hard carriers like "
                 "Gemini SynthID"
+            )
+        if resolved == "sdxl-canny":
+            warnings.append(
+                "sdxl-canny floors are uncalibrated: edge conditioning "
+                "preserves glyph geometry but also shields watermark "
+                "signal more than plain sdxl"
             )
         if resolved == "sana":
             warnings.append(

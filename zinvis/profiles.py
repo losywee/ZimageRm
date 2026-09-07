@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-PROFILES = ("duo", "chroma", "zimage", "sdxl", "vae", "sana", "lcm")
+PROFILES = ("duo", "chroma", "zimage", "sdxl", "sdxl-canny", "vae", "sana",
+            "lcm")
 PROFILE_SEED = 0
 
 CHROMA_FLOORS = {
@@ -28,6 +29,10 @@ SDXL_UNKNOWN_FLOOR = 0.25
 # below the lowest calibrated floor push the executed timesteps outside the
 # training distribution and the UNet emits noise instead of content.
 SDXL_MIN_STRENGTH = 0.15
+
+# Canny conditioning pins structure (and glyph geometry), which also
+# shields watermark signal — be conservative until calibrated.
+SDXL_CANNY_FLOOR = 0.30
 
 SANA_FLOORS = {
     "google": 0.30,
@@ -76,6 +81,8 @@ def resolve_strength(
         return CHROMA_FLOORS.get(v, CHROMA_UNKNOWN_FLOOR)
     if pipeline == "sdxl":
         return SDXL_FLOORS.get(v, SDXL_UNKNOWN_FLOOR)
+    if pipeline == "sdxl-canny":
+        return SDXL_CANNY_FLOOR
     if pipeline == "sana":
         return SANA_FLOORS.get(v, SANA_UNKNOWN_FLOOR)
     if pipeline == "lcm":

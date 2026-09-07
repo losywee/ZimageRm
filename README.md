@@ -30,6 +30,7 @@ input.png ──► [stage 1: Chroma1-HD img2img, strength = vendor floor]
 | `zimage` | Z-Image Turbo (`Tongyi-MAI/Z-Image-Turbo`) img2img, 8 steps, guidance 1.0 | — |
 | `duo` (default) | Chroma1 global pass | Z-Image Turbo refinement (default 0.18, PSNR-floor gated) |
 | `sdxl` | SDXL-base + **SDXL-Lightning** 4-step LoRA img2img, guidance 1.0 | — |
+| `sdxl-canny` | sdxl + **Canny ControlNet** (`diffusers/controlnet-canny-sdxl-1.0`, ~2.5 GB): edge conditioning pins glyph geometry, so small text survives regeneration | — |
 | `sana` | SANA-Sprint 0.6B 2-step img2img (`Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers`), guidance 1.0, SCM-locked to 2 steps (strength <0.5 runs only 1 of them) | — |
 | `lcm` | SD1.5 Dreamshaper + LCM img2img (`SimianLuo/LCM_Dreamshaper_v7`), guidance 1.0, 4 steps clamped to the strength window (`original_steps × strength`) | — |
 | `vae` | SD VAE (`sd-vae-ft-mse`) round-trip + latent noise (`strength` = noise std) | — |
@@ -45,18 +46,19 @@ lower floors there), mirroring published cross-engine calibration.
 | `lcm` | **~4.3 GB** | ~4 GB | lightest diffusion tier (SD1.5, 512-768 native; use `--max-side 768`) |
 | `sana` | ~7.7 GB | ~7 GB | 2-step, ~10x faster per image than sdxl, 1024px native |
 | `sdxl` | ~8 GB | ~10 GB (cpu-offload with `--low-vram`) | calibrated middle tier — best strength/fidelity-per-GB |
+| `sdxl-canny` | ~10.5 GB | ~12 GB | text/glyph preservation variant (~2x slower; uncalibrated floors) |
 | `zimage` | ~21 GB | 8–10 GB (fp8 streaming) | best fidelity on 15 GB-class cards |
 | `chroma`/`duo` | ~33 GB | ~29 GiB | strongest disruption, big cards only |
 
 ## Strength policy (vendor floors)
 
-| Vendor | chroma / duo | sdxl | sana | lcm | zimage | vae |
-|---|---|---|---|---|---|---|
-| google | 0.40 | 0.25 | 0.30 | 0.35 | 0.30 | 0.15 (noise std) |
-| openai | 0.09 | 0.15 | 0.15 | 0.20 | 0.12 | 0.15 |
-| microsoft | 0.125 | 0.25* | 0.30* | 0.35* | 0.15 | 0.15 |
-| meta | 0.17 | 0.25* | 0.30* | 0.35* | 0.15 | 0.15 |
-| unknown | 0.40 | 0.25 | 0.30 | 0.35 | 0.30 | 0.15 |
+| Vendor | chroma / duo | sdxl | sdxl-canny | sana | lcm | zimage | vae |
+|---|---|---|---|---|---|---|---|
+| google | 0.40 | 0.25 | 0.30 | 0.30 | 0.35 | 0.30 | 0.15 (noise std) |
+| openai | 0.09 | 0.15 | 0.30 | 0.15 | 0.20 | 0.12 | 0.15 |
+| microsoft | 0.125 | 0.25* | 0.30 | 0.30* | 0.35* | 0.15 | 0.15 |
+| meta | 0.17 | 0.25* | 0.30 | 0.30* | 0.35* | 0.15 | 0.15 |
+| unknown | 0.40 | 0.25 | 0.30 | 0.30 | 0.35 | 0.30 | 0.15 |
 
 Chroma and SDXL floors follow published oracle calibrations (fixed seed 0,
 fixed steps/guidance/prompt — the floors are bound to exactly that

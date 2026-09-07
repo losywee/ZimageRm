@@ -99,6 +99,10 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
     assert r.resolved_pipeline == "lcm" and r.strength == 0.35
     assert any("lcm floors" in w for w in r.warnings), r.warnings
 
+    r = eng.run_file(str(src), str(p / "out10.png"), "sdxl-canny")
+    assert r.resolved_pipeline == "sdxl-canny" and r.strength == 0.30
+    assert any("sdxl-canny floors" in w for w in r.warnings), r.warnings
+
 
 def test_auto_pipeline(tmp="/tmp/zinvis_auto_test"):
     p = Path(tmp)
