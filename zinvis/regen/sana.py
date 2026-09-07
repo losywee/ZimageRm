@@ -44,9 +44,15 @@ class SanaBackend:
         if self._pipe is not None:
             return self._pipe
         import torch
+
         from diffusers import SanaSprintImg2ImgPipeline
 
-        kwargs = {"torch_dtype": torch.bfloat16}
+        from ..devices import bf16_supported
+
+        # Weights are fp16-native; bf16 only where the GPU supports it
+        # (T4/sm75 bf16 GEMMs fail with "GET was unable to find an engine").
+        dtype = torch.bfloat16 if bf16_supported() else torch.float16
+        kwargs = {"torch_dtype": dtype}
         if self.hf_token:
             kwargs["token"] = self.hf_token
         # No bf16 variant files in the repo (fp16 weights); single load.

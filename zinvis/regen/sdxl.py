@@ -73,7 +73,10 @@ class SDXLBackend:
             EulerDiscreteScheduler,
         )
 
-        kwargs = {"torch_dtype": torch.bfloat16}
+        from ..devices import bf16_supported
+
+        dtype = torch.bfloat16 if bf16_supported() else torch.float16
+        kwargs = {"torch_dtype": dtype}
         if self.hf_token:
             kwargs["token"] = self.hf_token
         try:

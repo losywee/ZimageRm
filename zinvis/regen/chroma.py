@@ -32,6 +32,8 @@ class ChromaBackend:
             return self._pipe
         import torch
 
+        from ..devices import bf16_supported
+
         try:
             from diffusers import ChromaImg2ImgPipeline
         except ImportError as exc:
@@ -40,7 +42,8 @@ class ChromaBackend:
                 "(and torch with CUDA support)"
             ) from exc
 
-        kwargs = {"torch_dtype": torch.bfloat16}
+        dtype = torch.bfloat16 if bf16_supported() else torch.float16
+        kwargs = {"torch_dtype": dtype}
         if self.hf_token:
             kwargs["token"] = self.hf_token
         pipe = ChromaImg2ImgPipeline.from_pretrained(CHROMA_MODEL_ID, **kwargs)

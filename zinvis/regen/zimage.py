@@ -31,20 +31,32 @@ def vram_limit_gb():
         return None
 
 
+def _safe_bf16_supported() -> bool:
+    try:
+        from ..devices import bf16_supported
+
+        return bf16_supported()
+    except Exception:
+        return True
+
+
 _CPU_BF16_CONFIG = None
 
 
 def _cpu_bf16_config():
     import torch
 
+    from ..devices import bf16_supported
+
+    comp = torch.bfloat16 if bf16_supported() else torch.float16
     return {
-        "offload_dtype": torch.bfloat16,
+        "offload_dtype": comp,
         "offload_device": "cpu",
-        "onload_dtype": torch.bfloat16,
+        "onload_dtype": comp,
         "onload_device": "cpu",
-        "preparing_dtype": torch.bfloat16,
+        "preparing_dtype": comp,
         "preparing_device": "cuda",
-        "computation_dtype": torch.bfloat16,
+        "computation_dtype": comp,
         "computation_device": "cuda",
     }
 
@@ -52,14 +64,17 @@ def _cpu_bf16_config():
 def _disk_stream_config():
     import torch
 
+    from ..devices import bf16_supported
+
+    comp = torch.bfloat16 if bf16_supported() else torch.float16
     return {
         "offload_dtype": "disk",
         "offload_device": "disk",
         "onload_dtype": torch.float8_e4m3fn,
         "onload_device": "cpu",
-        "preparing_dtype": torch.bfloat16,
+        "preparing_dtype": comp,
         "preparing_device": "cuda",
-        "computation_dtype": torch.bfloat16,
+        "computation_dtype": comp,
         "computation_device": "cuda",
     }
 
@@ -144,7 +159,10 @@ class ZImageBackend:
             ),
         ]
         pipe = ZImagePipeline.from_pretrained(
-            torch_dtype=torch.bfloat16,
+            torch_dtype=(
+                torch.bfloat16
+                if _safe_bf16_supported() else torch.float16
+            ),
             device=self.device,
             model_configs=model_configs,
             tokenizer_config=ModelConfig(
