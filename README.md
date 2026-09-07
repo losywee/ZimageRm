@@ -59,6 +59,20 @@ pip install -e .
 An NVIDIA CUDA GPU is required for the diffusion stages (bf16). Everything
 else (provenance sniffing, metadata stripping, reports) runs anywhere.
 
+### Models and disk usage
+
+| Pipeline | Fetches | Size |
+|---|---|---|
+| `chroma` / `duo` | `lodestones/Chroma1-HD` (bf16) | ~27.5 GB |
+| `zimage` | `Tongyi-MAI/Z-Image-Turbo` | ~12 GB |
+
+Weights are downloaded once into the Hugging Face cache
+(`~/.cache/huggingface/hub`) and reused from disk on every later run.
+Want a light first run? `--pipeline zimage` skips the Chroma download
+entirely. Set `HF_HOME` to relocate the cache, and export
+`HF_HUB_ENABLE_HF_TRANSFER=1` (with `pip install hf_transfer`) for faster
+downloads.
+
 ## Usage
 
 ```bash
