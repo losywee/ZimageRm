@@ -31,7 +31,14 @@ class ChromaBackend:
         if self._pipe is not None:
             return self._pipe
         import torch
-        from diffusers import ChromaImg2ImgPipeline
+
+        try:
+            from diffusers import ChromaImg2ImgPipeline
+        except ImportError as exc:
+            raise RuntimeError(
+                "the chroma pipeline needs diffusers: pip install diffusers "
+                "(and torch with CUDA support)"
+            ) from exc
 
         kwargs = {"torch_dtype": torch.bfloat16}
         if self.hf_token:

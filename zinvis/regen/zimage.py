@@ -44,7 +44,14 @@ class ZImageBackend:
 
     def _load_diffusers(self):
         import torch
-        from diffusers import ZImageImg2ImgPipeline
+
+        try:
+            from diffusers import ZImageImg2ImgPipeline
+        except ImportError as exc:
+            raise RuntimeError(
+                "this diffusers build has no ZImageImg2ImgPipeline; install "
+                "DiffSynth for the streaming path: pip install diffsynth"
+            ) from exc
 
         pipe = ZImageImg2ImgPipeline.from_pretrained(
             ZIMAGE_MODEL_ID, torch_dtype=torch.bfloat16,
@@ -59,7 +66,13 @@ class ZImageBackend:
         os.environ.setdefault("DIFFSYNTH_DOWNLOAD_SOURCE", "huggingface")
         if self.hf_token:
             os.environ.setdefault("HF_TOKEN", self.hf_token)
-        from diffsynth.pipelines.z_image import ModelConfig, ZImagePipeline
+        try:
+            from diffsynth.pipelines.z_image import ModelConfig, ZImagePipeline
+        except ImportError as exc:
+            raise RuntimeError(
+                "Z-Image streaming mode needs DiffSynth-Studio. Install it "
+                "with: pip install diffsynth"
+            ) from exc
 
         config = {
             "offload_dtype": "disk",
