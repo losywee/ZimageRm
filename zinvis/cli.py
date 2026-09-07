@@ -116,12 +116,23 @@ def main(argv=None) -> int:
         s = br.summary
         print(f"processed {s['total']} images in {s['seconds']:.1f}s | "
               f"ok={s['cleaned']} failed={s['failed']} skipped={s['skipped']}")
+        if s["total"] == 0:
+            found_others = [ext for ext in ("*.jpg", "*.jpeg", "*.webp", "*.PNG", "*.JPG", "*.JPEG", "*.WEBP")
+                            if any(in_path.glob(ext))]
+            if found_others:
+                print(f"warning : 0 images matched '{args.glob}', but files matching "
+                      f"{', '.join(found_others)} were found. Pass --glob '<pattern>' to process them.")
         print("report:", report_path)
         return 0 if s["failed"] == 0 else 1
 
     r = eng.run_file(args.input, args.output, args.pipeline, args.vendor,
                      args.strength, args.seed, args.max_side)
     _print_record(r)
+    if args.report:
+        report_p = Path(args.report)
+        report_p.parent.mkdir(parents=True, exist_ok=True)
+        report_p.write_text(r.to_json())
+        print("report  :", str(report_p))
     return 0 if r.error is None else 1
 
 

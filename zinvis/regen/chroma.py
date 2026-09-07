@@ -53,11 +53,15 @@ class ChromaBackend:
     def unload(self):
         if self._pipe is None:
             return
-        import torch
-
         del self._pipe
         self._pipe = None
-        torch.cuda.empty_cache()
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
 
     def run(self, image, strength: float, seed: int):
         import torch

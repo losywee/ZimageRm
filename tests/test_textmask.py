@@ -78,8 +78,28 @@ def test_keep_text_engine(tmp="/tmp/zinvis_keeptext_test"):
     assert any("keep-text" in w for w in r.warnings), r.warnings
 
 
+def test_keep_text_downscale(tmp="/tmp/zinvis_keeptext_downscale_test"):
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from test_engine_fake import FakeBackend  # noqa
+
+    from zinvis.engine import ZinvisEngine
+
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    src = p / "in.png"
+    make_text_image(src, size=(640, 400))
+    eng = ZinvisEngine(device="cpu", keep_text=True)
+    eng._backend_for = lambda name: FakeBackend()
+    r = eng.run_file(str(src), str(p / "out.png"), "sdxl", max_side=320)
+    assert r.status == "cleaned", r.error
+    assert "keep_text" in r.stages, r.stages
+    out_img = Image.open(p / "out.png")
+    assert out_img.size == (640, 400)
+
+
 if __name__ == "__main__":
     test_detect_text()
     test_composite()
     test_keep_text_engine()
+    test_keep_text_downscale()
     print("TEXTMASK OK")

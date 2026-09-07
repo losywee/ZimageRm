@@ -45,6 +45,19 @@ class VAEBackend:
         self._vae = vae.to(self.device).eval()
         return self._vae
 
+    def unload(self):
+        if self._vae is None:
+            return
+        del self._vae
+        self._vae = None
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
     def run(self, image, strength: float, seed: int):
         import torch
 

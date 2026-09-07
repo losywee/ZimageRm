@@ -88,10 +88,14 @@ class ZinvisEngine:
         resolved = pipeline
         if resolved is None:
             vram = vram_gb()
-            if vram is not None and vram < CHROMA_MIN_VRAM_GB:
+            if self.low_vram or (vram is not None and vram < CHROMA_MIN_VRAM_GB):
                 resolved = "zimage"
+                vram_str = (
+                    f"{vram:.0f} GiB VRAM (<{CHROMA_MIN_VRAM_GB:.0f})"
+                    if vram is not None else "low_vram=True"
+                )
                 warnings.append(
-                    f"auto: {vram:.0f} GiB VRAM (<{CHROMA_MIN_VRAM_GB:.0f}) -> "
+                    f"auto: {vram_str} -> "
                     "zimage (DiffSynth disk-streaming); Chroma1 needs ~29 GiB"
                 )
             else:
@@ -246,9 +250,14 @@ class ZinvisEngine:
                 out = composite_original(out, working, text_mask)
             record.psnr = psnr(working, out)
             backoff_stage = None
+            backoff_floor = (
+                profiles.SDXL_MIN_STRENGTH
+                if plan["pipeline"] in ("sdxl", "sdxl-canny")
+                else BACKOFF_MIN_STRENGTH
+            )
             if (record.psnr < BACKOFF_PSNR_FLOOR
-                    and strength_v > BACKOFF_MIN_STRENGTH):
-                retry_s = max(BACKOFF_MIN_STRENGTH,
+                    and strength_v > backoff_floor):
+                retry_s = max(backoff_floor,
                               strength_v * BACKOFF_FACTOR)
                 try:
                     retry = backend.run(working, retry_s, plan["seed"])
@@ -278,6 +287,11 @@ class ZinvisEngine:
             record.strength = strength_v
             if orig_size != working.size:
                 out = out.resize(orig_size, Image.Resampling.LANCZOS)
+                if use_keep:
+                    from .textmask import composite_original, detect_text_mask
+
+                    orig_mask = detect_text_mask(img)
+                    out = composite_original(out, img, orig_mask)
             save_stripped(out, out_p)
             record.stages = list(getattr(out, "info", {}).get(
                 "zinvis_stages", [plan["pipeline"]]))

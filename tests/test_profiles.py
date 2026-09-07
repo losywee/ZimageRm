@@ -95,7 +95,9 @@ def test_target_size_grids():
     fns = {
         chroma: chroma.chroma_target_size,
         sdxl: sdxl.sdxl_target_size,
-        sdxl_canny: None, lcm: lcm.lcm_target_size, vae: vae.vae_target_size,
+        sdxl_canny: sdxl_canny.sdxl_canny_target_size,
+        lcm: lcm.lcm_target_size,
+        vae: vae.vae_target_size,
         zimage: zimage.zimage_target_size,
         zimage_lite: zimage_lite.zimage_lite_target_size,
         sana: sana.sana_target_size,

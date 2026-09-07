@@ -82,13 +82,15 @@ class ZImageLiteBackend:
 
         dtype = torch.bfloat16 if bf16_supported() else torch.float16
 
+        tok_kwargs = {"token": self.hf_token} if self.hf_token else {}
+
         # 1. Text encoder pass first (8 GB), then free it entirely so the
         #    GGUF transformer never stacks on top of it in RAM.
         tokenizer = AutoTokenizer.from_pretrained(
-            ZIMAGE_MODEL_ID, subfolder="tokenizer")
+            ZIMAGE_MODEL_ID, subfolder="tokenizer", **tok_kwargs)
         te = Qwen3Model.from_pretrained(
             ZIMAGE_MODEL_ID, subfolder="text_encoder",
-            torch_dtype=dtype).to(self.device)
+            torch_dtype=dtype, **tok_kwargs).to(self.device)
         embeds = self._encode_once(tokenizer, te, torch, self.device)
         del te
         gc.collect()
@@ -100,9 +102,9 @@ class ZImageLiteBackend:
 
         # 2. Small components + GGUF transformer.
         vae = AutoencoderKL.from_pretrained(
-            ZIMAGE_MODEL_ID, subfolder="vae", torch_dtype=dtype)
+            ZIMAGE_MODEL_ID, subfolder="vae", torch_dtype=dtype, **tok_kwargs)
         scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained(
-            ZIMAGE_MODEL_ID, subfolder="scheduler")
+            ZIMAGE_MODEL_ID, subfolder="scheduler", **tok_kwargs)
         gguf_file = GGUF_FILES[self.gguf]
         kwargs = {
             "quantization_config": GGUFQuantizationConfig(
@@ -134,7 +136,7 @@ class ZImageLiteBackend:
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        except ImportError:
+        except Exception:
             pass
 
     def run(self, image, strength: float, seed: int):

@@ -17,6 +17,14 @@ CONTROLNET_CANNY_MODEL_ID = "diffusers/controlnet-canny-sdxl-1.0"
 SDXL_CANNY_CONTROL_SCALE = 0.5
 SDXL_CANNY_PROMPT = "high quality, sharp, detailed, faithful to the original"
 SDXL_CANNY_NEGATIVE = "blurry, lowres, distorted text, garbled text, artifacts"
+LATENT_GRID = 8
+
+
+def sdxl_canny_target_size(width: int, height: int) -> tuple[int, int]:
+    return (
+        max(LATENT_GRID, (width // LATENT_GRID) * LATENT_GRID),
+        max(LATENT_GRID, (height // LATENT_GRID) * LATENT_GRID),
+    )
 
 
 def canny_image(image: Image.Image) -> Image.Image:
@@ -110,7 +118,7 @@ class SDXLCannyBackend:
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        except ImportError:
+        except Exception:
             pass
 
     def run(self, image, strength: float, seed: int):
@@ -121,12 +129,7 @@ class SDXLCannyBackend:
         # fall outside Lightning's trained sigma range and output noise.
         strength = max(float(strength), SDXL_MIN_STRENGTH)
         orig_size = image.size
-        grid = 8
-
-        def _grid(v):
-            return max(grid, (v // grid) * grid)
-
-        target = (_grid(orig_size[0]), _grid(orig_size[1]))
+        target = sdxl_canny_target_size(*orig_size)
         prepared = image if image.size == target else image.resize(
             target, Image.Resampling.LANCZOS
         )

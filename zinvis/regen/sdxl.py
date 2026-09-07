@@ -101,6 +101,19 @@ class SDXLBackend:
         self._pipe = pipe
         return self._pipe
 
+    def unload(self):
+        if self._pipe is None:
+            return
+        del self._pipe
+        self._pipe = None
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
     def run(self, image, strength: float, seed: int):
         import torch
 

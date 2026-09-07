@@ -113,6 +113,8 @@ class ZImageBackend:
     def _load_diffusers(self):
         import torch
 
+        from ..devices import bf16_supported
+
         try:
             from diffusers import ZImageImg2ImgPipeline
         except ImportError as exc:
@@ -121,8 +123,13 @@ class ZImageBackend:
                 "DiffSynth for the streaming path: pip install diffsynth"
             ) from exc
 
+        dtype = torch.bfloat16 if bf16_supported() else torch.float16
+        kwargs = {"torch_dtype": dtype}
+        if self.hf_token:
+            kwargs["token"] = self.hf_token
+
         pipe = ZImageImg2ImgPipeline.from_pretrained(
-            ZIMAGE_MODEL_ID, torch_dtype=torch.bfloat16,
+            ZIMAGE_MODEL_ID, **kwargs
         )
         self._pipe = pipe.to(self.device)
         self.mode = "diffusers"
@@ -211,7 +218,7 @@ class ZImageBackend:
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        except ImportError:
+        except Exception:
             pass
 
     def _run_diffusers(self, image, strength: float, seed: int):

@@ -54,8 +54,12 @@ class DuoBackend:
         if self.low_vram:
             self.zimage.unload()
             stages.append("zimage_unloaded(low_vram)")
-        out.info.setdefault("zinvis_stages", stages)
+        out.info["zinvis_stages"] = stages
         return out
+
+    def unload(self):
+        self.chroma.unload()
+        self.zimage.unload()
 
 
 def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,

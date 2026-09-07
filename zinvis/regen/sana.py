@@ -75,7 +75,7 @@ class SanaBackend:
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        except ImportError:
+        except Exception:
             pass
 
     def run(self, image, strength: float, seed: int):

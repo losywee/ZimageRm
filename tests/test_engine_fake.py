@@ -310,6 +310,13 @@ def test_oom_retry_and_backoff(tmp="/tmp/zinvis_recover_test"):
     assert r.strength < 0.4, r.strength
     assert any("strength_backoff" in s for s in r.stages), r.stages
 
+    # SDXL at distillation floor (0.15) must not back off even if PSNR is low
+    r_floor = eng2.run_file(str(src), str(p / "dark_floor.png"), "sdxl",
+                            strength=0.15)
+    assert r_floor.status == "cleaned", r_floor.error
+    assert r_floor.strength == 0.15, r_floor.strength
+    assert not any("strength_backoff" in s for s in r_floor.stages), r_floor.stages
+
     class OomBackoffBackend(FakeBackend):
         def run(self, image, strength, seed):
             import numpy as np
@@ -400,6 +407,72 @@ def test_ocr_skipped_files(tmp="/tmp/zinvis_ocr_skip_test"):
         ocr_mod.extract_text, ocr_mod.backend_name = orig_et, orig_bn
 
 
+def test_new_fixes(tmp="/tmp/zinvis_new_fixes_test"):
+    import json
+    from zinvis.regen import build_backend
+    import zinvis.cli as cli_mod
+
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    src = make_image(p / "in.png")
+
+    # 1. Test unload on backends
+    duo = build_backend("duo", device="cpu")
+    duo.unload()
+
+    sdxl_b = build_backend("sdxl", device="cpu")
+    sdxl_b.unload()
+
+    vae_b = build_backend("vae", device="cpu")
+    vae_b.unload()
+
+    # 2. Test auto-plan with low_vram=True
+    eng_low = ZinvisEngine(device="cpu", low_vram=True)
+    orig_vram = engine_mod.vram_gb
+    try:
+        engine_mod.vram_gb = lambda: 80.0
+        plan = eng_low.plan(None, None, None, None)
+        assert plan["pipeline"] == "zimage", plan
+        assert any("low_vram" in w or "auto:" in w for w in plan["warnings"])
+    finally:
+        engine_mod.vram_gb = orig_vram
+
+    # 3. Test single-file report in cli
+    report_file = p / "single_report.json"
+    if report_file.exists():
+        report_file.unlink()
+
+    orig_engine_cls = cli_mod.ZinvisEngine
+    class MockEngine(orig_engine_cls):
+        def _backend_for(self, name):
+            return FakeBackend()
+
+        def _require_device(self):
+            pass
+
+    cli_mod.ZinvisEngine = MockEngine
+    try:
+        ret = cli_mod.main([str(src), str(p / "cli_out.png"),
+                            "--no-ocr", "--report", str(report_file)])
+        assert ret == 0
+        assert report_file.is_file()
+        data = json.loads(report_file.read_text())
+        # 4. Test directory with 0 matching images but other images present
+        import io
+        from contextlib import redirect_stdout
+
+        dir_in = p / "dir_with_jpg"
+        dir_in.mkdir(parents=True, exist_ok=True)
+        make_image(dir_in / "photo.jpg")
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            ret = cli_mod.main([str(dir_in), str(p / "dir_out"), "--no-ocr"])
+        out_str = buf.getvalue()
+        assert "0 images matched" in out_str and "*.jpg" in out_str, out_str
+    finally:
+        cli_mod.ZinvisEngine = orig_engine_cls
+
+
 if __name__ == "__main__":
     test_run_file()
     test_auto_pipeline()
@@ -410,4 +483,5 @@ if __name__ == "__main__":
     test_oom_retry_and_backoff()
     test_ocr_capture()
     test_ocr_skipped_files()
+    test_new_fixes()
     print("ENGINE OK")
