@@ -40,6 +40,10 @@ def build_parser() -> argparse.ArgumentParser:
                     type=float, help="duo: drop the refinement pass below this PSNR")
     ap.add_argument("--max-side", default=0, type=int,
                     help="cap the long side before diffusion (0 = native)")
+    ap.add_argument("--keep-text", action="store_true",
+                    help="restore original pixels over detected small text "
+                         "(prevents glyph garbling; watermark signal under "
+                         "text survives)")
     ap.add_argument("--glob", default="*.png")
     ap.add_argument("--skip-existing", action="store_true",
                     help="batch: skip files whose output already exists")
@@ -58,6 +62,7 @@ def main(argv=None) -> int:
         psnr_floor=args.psnr_floor,
         low_vram=args.low_vram,
         stream=args.stream,
+        keep_text=args.keep_text,
     )
     in_path = Path(args.input)
 

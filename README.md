@@ -60,6 +60,22 @@ configuration). Z-Image floors are **uncalibrated defaults**; `*` = no
 measured SDXL cohort, falls to the unknown floor (conservative). Vendor is
 auto-sniffed from C2PA/XMP provenance in the file (or pass `--vendor`).
 
+## Small text (`--keep-text`)
+
+Diffusion regeneration redraws glyphs; small text often comes back garbled.
+`--keep-text` detects probable small-text regions (edge-density detector, no
+extra dependencies) and composites the **original** pixels back over the
+cleaned output with a feathered seam:
+
+```bash
+zinvis in.png out.png --pipeline sdxl --keep-text
+```
+
+Tradeoff: any watermark signal under the restored text pixels survives. The
+mask is conservative (small dense edge clusters only; large display type
+still regenerates). Without the flag, lowering `--strength` or using
+`--pipeline vae` also reduces glyph damage.
+
 ## Install
 
 ```bash

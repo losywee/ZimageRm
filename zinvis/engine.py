@@ -29,13 +29,15 @@ class ZinvisEngine:
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
                  refine_strength: float = profiles.DUO_REFINE_STRENGTH,
                  psnr_floor: float = profiles.DEFAULT_PSNR_FLOOR,
-                 low_vram: bool = False, stream: bool = False):
+                 low_vram: bool = False, stream: bool = False,
+                 keep_text: bool = False):
         self.device = device
         self.hf_token = hf_token
         self.refine_strength = refine_strength
         self.psnr_floor = psnr_floor
         self.low_vram = low_vram
         self.stream = stream
+        self.keep_text = keep_text
         self._backend = None
         self._backend_name: str | None = None
 
@@ -99,6 +101,11 @@ class ZinvisEngine:
                 "pre-pass, insufficient alone for hard carriers like "
                 "Gemini SynthID"
             )
+        if self.keep_text:
+            warnings.append(
+                "keep-text: original pixels are restored over detected small "
+                "text, so any watermark signal under those pixels survives"
+            )
         if strength is not None and strength < 0.05:
             warnings.append(
                 f"strength {strength} is very low; step count is capped at "
@@ -121,7 +128,7 @@ class ZinvisEngine:
     def run_file(self, input_path: str, output_path: str,
                  pipeline: str | None, vendor: str | None = None,
                  strength: float | None = None, seed: int | None = None,
-                 max_side: int = 0) -> ImageRecord:
+                 max_side: int = 0, keep_text: bool | None = None) -> ImageRecord:
         t0 = now()
         in_p, out_p = Path(input_path), Path(output_path)
         plan = self.plan(pipeline, vendor, strength, seed, in_p)
@@ -156,12 +163,20 @@ class ZinvisEngine:
             out = backend.run(working, plan["strength"], plan["seed"])
             if out.size != working.size:
                 out = out.resize(working.size, Image.Resampling.LANCZOS)
+            use_keep = self.keep_text if keep_text is None else keep_text
+            if use_keep:
+                from .textmask import composite_original, detect_text_mask
+
+                mask = detect_text_mask(working)
+                out = composite_original(out, working, mask)
             record.psnr = psnr(working, out)
             if orig_size != working.size:
                 out = out.resize(orig_size, Image.Resampling.LANCZOS)
             save_stripped(out, out_p)
             record.stages = list(getattr(out, "info", {}).get(
                 "zinvis_stages", [plan["pipeline"]]))
+            if use_keep:
+                record.stages.append("keep_text")
             record.status = "cleaned"
         except Exception as exc:
             record.status = "error"
@@ -174,7 +189,7 @@ class ZinvisEngine:
                 vendor: str | None = None, strength: float | None = None,
                 seed: int | None = None, glob_pattern: str = "*.png",
                 max_side: int = 0, skip_existing: bool = False,
-                progress=None) -> BatchReport:
+                progress=None, keep_text: bool | None = None) -> BatchReport:
         t0 = now()
         br = BatchReport(in_dir=in_dir, out_dir=out_dir)
         for p in sorted(Path(in_dir).glob(glob_pattern)):
@@ -190,7 +205,7 @@ class ZinvisEngine:
                 )
             else:
                 r = self.run_file(str(p), str(out_p), pipeline, vendor,
-                                  strength, seed, max_side)
+                                  strength, seed, max_side, keep_text)
             br.images.append(r)
             if progress is not None:
                 try:
