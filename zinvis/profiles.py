@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-PROFILES = ("duo", "chroma", "zimage", "sdxl", "sdxl-canny", "vae", "sana",
-            "lcm")
+PROFILES = ("duo", "chroma", "zimage", "zimage-lite", "sdxl", "sdxl-canny",
+            "vae", "sana", "lcm")
 PROFILE_SEED = 0
 
 CHROMA_FLOORS = {
@@ -89,6 +89,8 @@ def resolve_strength(
         return LCM_FLOORS.get(v, LCM_UNKNOWN_FLOOR)
     if pipeline == "vae":
         return VAE_DEFAULT_NOISE
+    if pipeline in ("zimage", "zimage-lite"):
+        return ZIMAGE_FLOORS.get(v, ZIMAGE_UNKNOWN_FLOOR)
     return ZIMAGE_FLOORS.get(v, ZIMAGE_UNKNOWN_FLOOR)
 
 

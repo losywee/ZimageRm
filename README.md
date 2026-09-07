@@ -31,6 +31,7 @@ input.png ──► [stage 1: Chroma1-HD img2img, strength = vendor floor]
 | `duo` (default) | Chroma1 global pass | Z-Image Turbo refinement (default 0.18, PSNR-floor gated) |
 | `sdxl` | SDXL-base + **SDXL-Lightning** 4-step LoRA img2img, guidance 1.0 | — |
 | `sdxl-canny` | sdxl + **Canny ControlNet** (`diffusers/controlnet-canny-sdxl-1.0`, ~2.5 GB): edge conditioning pins glyph geometry, so small text survives regeneration | — |
+| `zimage-lite` | Z-Image Turbo with **GGUF-quantized transformer** (`unsloth/Z-Image-Turbo-GGUF`, `--gguf q8|q4`): fixed prompt encoded once and the 8 GB text encoder freed → peak RAM ~8 GB | — |
 | `sana` | SANA-Sprint 0.6B 2-step img2img (`Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers`), guidance 1.0, SCM-locked to 2 steps (strength <0.5 runs only 1 of them) | — |
 | `lcm` | SD1.5 Dreamshaper + LCM img2img (`SimianLuo/LCM_Dreamshaper_v7`), guidance 1.0, 4 steps clamped to the strength window (`original_steps × strength`) | — |
 | `vae` | SD VAE (`sd-vae-ft-mse`) round-trip + latent noise (`strength` = noise std) | — |
@@ -48,6 +49,7 @@ lower floors there), mirroring published cross-engine calibration.
 | `sdxl` | ~8 GB | ~10 GB (cpu-offload with `--low-vram`) | calibrated middle tier — best strength/fidelity-per-GB |
 | `sdxl-canny` | ~10.5 GB | ~12 GB | text/glyph preservation variant (~2x slower; uncalibrated floors) |
 | `zimage` | ~21 GB | 8–10 GB (fp8 streaming) | best fidelity on 15 GB-class cards |
+| `zimage-lite` | **~15 GB** (q8) / ~13 GB (q4) | ~8–10 GB (GGUF on GPU) | zimage quality at half the fetch; needs `gguf` pip package |
 | `chroma`/`duo` | ~33 GB | ~29 GiB | strongest disruption, big cards only |
 
 ## Strength policy (vendor floors)
@@ -148,6 +150,7 @@ the sdxl backend also patches this gate at runtime as a fallback.)
 | `sdxl-canny` | sdxl + `diffusers/controlnet-canny-sdxl-1.0` | ~10.5 GB |
 | `chroma` / `duo` | `lodestones/Chroma1-HD` (bf16) | ~27.5 GB |
 | `zimage` | `Tongyi-MAI/Z-Image-Turbo` | ~21 GB |
+| `zimage-lite` | official TE/VAE + `unsloth/Z-Image-Turbo-GGUF` transformer | ~15 GB (q8) / ~13 GB (q4) |
 
 Weights are downloaded once into the Hugging Face cache
 (`~/.cache/huggingface/hub`) and reused from disk on every later run.

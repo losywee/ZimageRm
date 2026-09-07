@@ -51,6 +51,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="sdxl-canny: ControlNet conditioning strength "
                          "(higher = text preserved better, watermark "
                          "disrupted less)")
+    ap.add_argument("--gguf", default="q8", choices=["q8", "q4"],
+                    help="zimage-lite: GGUF quantization preset "
+                         "(q8 ~15 GB fetch / q4 ~13 GB)")
     ap.add_argument("--no-ocr", action="store_true",
                     help="skip pre-processing text extraction into "
                          "summary.json (default: on when an OCR backend is "
@@ -79,6 +82,7 @@ def main(argv=None) -> int:
         keep_text=args.keep_text,
         ocr=not args.no_ocr,
         control_scale=args.control_scale,
+        gguf=args.gguf,
     )
     in_path = Path(args.input)
 

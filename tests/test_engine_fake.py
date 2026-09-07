@@ -110,6 +110,20 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
     assert any("clamping" in w for w in r.warnings), r.warnings
     assert not any("very low" in w for w in r.warnings), r.warnings
 
+    r = eng.run_file(str(src), str(p / "out12.png"), "zimage-lite")
+    assert r.resolved_pipeline == "zimage-lite" and r.strength == 0.30
+    assert any("zimage-lite" in w for w in r.warnings), r.warnings
+
+    from zinvis.regen import build_backend
+
+    b = build_backend("zimage-lite", device="cpu", gguf="q4")
+    assert b.gguf == "q4", b.gguf
+    try:
+        build_backend("zimage-lite", device="cpu", gguf="q3")
+        raise AssertionError("expected ValueError")
+    except ValueError:
+        pass
+
     # control-scale plumbing reaches the backend
     from zinvis.regen import build_backend
 

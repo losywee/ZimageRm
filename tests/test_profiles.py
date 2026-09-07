@@ -31,6 +31,8 @@ def test_resolve_strength():
     assert profiles.resolve_strength("sana", "meta") == 0.30
     assert profiles.resolve_strength("sdxl-canny", "google") == 0.30
     assert profiles.resolve_strength("sdxl-canny", None) == 0.30
+    assert profiles.resolve_strength("zimage-lite", "google") == 0.30
+    assert profiles.resolve_strength("zimage-lite", "openai") == 0.12
     assert profiles.resolve_strength("lcm", "google") == 0.35
     assert profiles.resolve_strength("lcm", "openai") == 0.20
     assert profiles.resolve_strength("lcm", None) == 0.35

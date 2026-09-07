@@ -41,7 +41,7 @@ class ZinvisEngine:
                  psnr_floor: float = profiles.DEFAULT_PSNR_FLOOR,
                  low_vram: bool = False, stream: bool | None = None,
                  keep_text: bool = False, ocr: bool = True,
-                 control_scale: float = 0.5):
+                 control_scale: float = 0.5, gguf: str = "q8"):
         self.device = device
         self.hf_token = hf_token
         self.refine_strength = refine_strength
@@ -51,6 +51,7 @@ class ZinvisEngine:
         self.keep_text = keep_text
         self.ocr = ocr
         self.control_scale = control_scale
+        self.gguf = gguf
         self._backend = None
         self._backend_name: str | None = None
         # Sticky downscale: once an OOM forces a smaller working size, later
@@ -68,6 +69,7 @@ class ZinvisEngine:
                 refine_strength=self.refine_strength,
                 psnr_floor=self.psnr_floor,
                 control_scale=self.control_scale,
+                gguf=self.gguf,
             )
             self._backend_name = name
         return self._backend
@@ -115,10 +117,15 @@ class ZinvisEngine:
             )
             s = profiles.SDXL_MIN_STRENGTH
         seed_v = profiles.resolve_seed(seed)
-        if strength is None and resolved == "zimage":
+        if strength is None and resolved in ("zimage", "zimage-lite"):
             warnings.append(
-                "zimage floors are uncalibrated defaults; pass --strength "
-                "for known-hard watermarks"
+                f"{resolved} floors are uncalibrated defaults; pass "
+                "--strength for known-hard watermarks"
+            )
+        if resolved == "zimage-lite":
+            warnings.append(
+                "zimage-lite: GGUF-quantized transformer (uncalibrated); "
+                "encode-once design keeps peak RAM ~8 GB"
             )
         if resolved == "vae":
             warnings.append(
