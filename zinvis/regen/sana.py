@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from PIL import Image
 
-from ..profiles import requested_steps
-
 SANA_MODEL_ID = "Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers"
+# SCM is hard-locked to exactly 2 steps (check_inputs raises otherwise);
+# strength scales the denoising fraction over that fixed schedule
+# (<0.5 -> 1 of 2 steps, >=0.5 -> both).
 SANA_EFFECTIVE_STEPS = 2
 SANA_CFG = 1.0
 SANA_PROMPT = "high quality, sharp, detailed, faithful to the original"
@@ -26,7 +27,8 @@ class SanaBackend:
     Guidance is 1.0 (below the pipeline default 4.5) to stay faithful to
     the input frame. Floors are uncalibrated defaults (like zimage):
     pass --strength for known-hard watermarks until an oracle
-    calibration exists.
+    calibration exists. Note the 2-step SCM lock: strengths below 0.5
+    run only one of the two steps.
     """
 
     name = "sana"
@@ -79,7 +81,7 @@ class SanaBackend:
         prepared = image if image.size == target else image.resize(
             target, Image.Resampling.LANCZOS
         )
-        steps = requested_steps(SANA_EFFECTIVE_STEPS, strength)
+        steps = SANA_EFFECTIVE_STEPS
         generator = torch.Generator(device=self.device).manual_seed(seed)
         result = pipe(
             prompt=SANA_PROMPT,

@@ -82,6 +82,13 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
     r = eng.run_file(str(src), str(p / "out7.png"), "sana")
     assert r.resolved_pipeline == "sana" and r.strength == 0.30
     assert any("sana floors" in w for w in r.warnings), r.warnings
+    assert any("1 of 2 SCM steps" in w for w in r.warnings), r.warnings
+
+    eng_hi = setup_engine(p)
+    r = eng_hi.run_file(str(src), str(p / "out7b.png"), "sana",
+                        strength=0.6)
+    assert r.status == "cleaned", r.error
+    assert not any("1 of 2 SCM" in w for w in r.warnings), r.warnings
 
     r = eng.run_file(str(src), str(p / "out8.png"), "lcm")
     assert r.resolved_pipeline == "lcm" and r.strength == 0.35

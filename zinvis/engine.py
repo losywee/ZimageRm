@@ -119,6 +119,11 @@ class ZinvisEngine:
                 "sana floors are uncalibrated defaults; pass --strength "
                 "for known-hard watermarks"
             )
+            if s < 0.5:
+                warnings.append(
+                    f"sana runs 1 of 2 SCM steps at strength {s}; raise "
+                    "--strength to 0.5+ to run both"
+                )
         if resolved == "lcm":
             warnings.append(
                 "lcm floors are uncalibrated defaults; SD1.5 is 512-768 "
