@@ -23,8 +23,10 @@ class SanaBackend:
     """SANA-Sprint 0.6B img2img — the 2-step lightweight tier
     (~7.7 GB fetch: Gemma-2 encoder 5.2 + DiT 1.2 + VAE 1.25; Apache-2.0).
 
-    Floors are uncalibrated defaults (like zimage): pass --strength for
-    known-hard watermarks until an oracle calibration exists.
+    Guidance is 1.0 (below the pipeline default 4.5) to stay faithful to
+    the input frame. Floors are uncalibrated defaults (like zimage):
+    pass --strength for known-hard watermarks until an oracle
+    calibration exists.
     """
 
     name = "sana"
@@ -45,12 +47,9 @@ class SanaBackend:
         kwargs = {"torch_dtype": torch.bfloat16}
         if self.hf_token:
             kwargs["token"] = self.hf_token
-        try:
-            pipe = SanaSprintImg2ImgPipeline.from_pretrained(
-                SANA_MODEL_ID, variant="bf16", **kwargs)
-        except Exception:
-            pipe = SanaSprintImg2ImgPipeline.from_pretrained(
-                SANA_MODEL_ID, **kwargs)
+        # No bf16 variant files in the repo (fp16 weights); single load.
+        pipe = SanaSprintImg2ImgPipeline.from_pretrained(
+            SANA_MODEL_ID, **kwargs)
         if self.low_vram:
             pipe.enable_model_cpu_offload()
         else:
@@ -89,6 +88,11 @@ class SanaBackend:
             num_inference_steps=steps,
             guidance_scale=SANA_CFG,
             generator=generator,
+            # Work at the input's native size: binning would snap to a
+            # 1024-bin and squarify non-square frames.
+            height=target[1],
+            width=target[0],
+            use_resolution_binning=False,
         ).images[0]
         if result.size != orig_size:
             result = result.resize(orig_size, Image.Resampling.LANCZOS)

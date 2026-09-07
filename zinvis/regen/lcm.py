@@ -46,14 +46,9 @@ class LcmBackend:
         kwargs = {"torch_dtype": torch.float16}
         if self.hf_token:
             kwargs["token"] = self.hf_token
-        try:
-            pipe = LatentConsistencyModelImg2ImgPipeline.from_pretrained(
-                LCM_MODEL_ID, **kwargs)
-        except Exception:
-            pipe = LatentConsistencyModelImg2ImgPipeline.from_pretrained(
-                LCM_MODEL_ID)
-        pipe.scheduler = type(pipe.scheduler).from_config(
-            pipe.scheduler.config)
+        # No fp16 variant files in the repo; single load, cast in memory.
+        pipe = LatentConsistencyModelImg2ImgPipeline.from_pretrained(
+            LCM_MODEL_ID, **kwargs)
         if self.low_vram:
             pipe.enable_model_cpu_offload()
         else:
