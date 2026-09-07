@@ -47,6 +47,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help="restore original pixels over detected small text "
                          "(prevents glyph garbling; watermark signal under "
                          "text survives)")
+    ap.add_argument("--no-ocr", action="store_true",
+                    help="skip pre-processing text extraction into "
+                         "summary.json (default: on when an OCR backend is "
+                         "installed)")
     ap.add_argument("--glob", default="*.png")
     ap.add_argument("--skip-existing", action="store_true",
                     help="batch: skip files whose output already exists")
@@ -69,6 +73,7 @@ def main(argv=None) -> int:
         low_vram=args.low_vram,
         stream=stream,
         keep_text=args.keep_text,
+        ocr=not args.no_ocr,
     )
     in_path = Path(args.input)
 
@@ -88,7 +93,8 @@ def main(argv=None) -> int:
             if r.error:
                 line += f" ({r.error})"
             elif r.status == "cleaned":
-                line += f" psnr={r.psnr:.1f}dB strength={r.strength}"
+                line += (f" psnr={r.psnr:.1f}dB strength={r.strength}"
+                         f" text={len(r.text)}")
             print(line, flush=True)
             collected.append(r)
             _write_partial()

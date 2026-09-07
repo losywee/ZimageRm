@@ -40,7 +40,7 @@ class ZinvisEngine:
                  refine_strength: float = profiles.DUO_REFINE_STRENGTH,
                  psnr_floor: float = profiles.DEFAULT_PSNR_FLOOR,
                  low_vram: bool = False, stream: bool | None = None,
-                 keep_text: bool = False):
+                 keep_text: bool = False, ocr: bool = True):
         self.device = device
         self.hf_token = hf_token
         self.refine_strength = refine_strength
@@ -48,6 +48,7 @@ class ZinvisEngine:
         self.low_vram = low_vram
         self.stream = stream
         self.keep_text = keep_text
+        self.ocr = ocr
         self._backend = None
         self._backend_name: str | None = None
         # Sticky downscale: once an OOM forces a smaller working size, later
@@ -179,6 +180,14 @@ class ZinvisEngine:
                     "weights that cannot run. Use --pipeline zimage."
                 )
             img = load_rgb(in_p)
+            if self.ocr:
+                from . import ocr as ocr_mod
+
+                record.text = ocr_mod.extract_text(img)
+                if not record.text and ocr_mod.backend_name() is None:
+                    record.warnings.append(
+                        "ocr: no backend installed; install "
+                        "rapidocr-onnxruntime to save image text")
             orig_size = img.size
             working = img
             eff_max = max_side

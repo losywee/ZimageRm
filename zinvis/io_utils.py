@@ -52,6 +52,7 @@ class ImageRecord:
     status: str = "cleaned"
     warnings: list = field(default_factory=list)
     error: str | None = None
+    text: list = field(default_factory=list)
 
     def to_json(self) -> str:
         import json

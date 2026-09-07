@@ -313,6 +313,33 @@ def test_oom_retry_and_backoff(tmp="/tmp/zinvis_recover_test"):
     assert seen_sizes[1][0] < 256, seen_sizes
 
 
+def test_ocr_capture(tmp="/tmp/zinvis_ocr_test"):
+    import zinvis.ocr as ocr_mod
+
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    src = make_image(p / "in.png")
+    orig_et, orig_bn = ocr_mod.extract_text, ocr_mod.backend_name
+    try:
+        ocr_mod.extract_text = lambda img: ["caption line", "123"]
+        ocr_mod.backend_name = lambda: "fake"
+
+        eng = setup_engine(p)
+        r = eng.run_file(str(src), str(p / "out.png"), "sdxl")
+        assert r.status == "cleaned", r.error
+        assert r.text == ["caption line", "123"], r.text
+        import json
+
+        assert json.loads(r.to_json())["text"] == ["caption line", "123"]
+
+        eng_off = ZinvisEngine(device="cpu", ocr=False)
+        eng_off._backend_for = lambda name: FakeBackend()
+        r = eng_off.run_file(str(src), str(p / "out2.png"), "sdxl")
+        assert r.text == [], r.text
+    finally:
+        ocr_mod.extract_text, ocr_mod.backend_name = orig_et, orig_bn
+
+
 if __name__ == "__main__":
     test_run_file()
     test_auto_pipeline()
@@ -321,4 +348,5 @@ if __name__ == "__main__":
     test_vram_restore()
     test_zimage_stream_fallback()
     test_oom_retry_and_backoff()
+    test_ocr_capture()
     print("ENGINE OK")

@@ -64,6 +64,16 @@ configuration). Z-Image, SANA and LCM floors are **uncalibrated defaults**;
 `*` = no measured cohort, falls to the unknown floor (conservative). Vendor
 is auto-sniffed from C2PA/XMP provenance in the file (or pass `--vendor`).
 
+## Pre-processing text capture
+
+Before the model touches an image, zinvis runs OCR on the original and
+stores every detected text string in that image's `summary.json` record
+(`"text": [...]`, reading order). This preserves what the image said even
+if regeneration later garbles small glyphs. Uses the first installed
+backend: `rapidocr-onnxruntime` (recommended, CPU, no system deps),
+`easyocr`, or `pytesseract` (+ system tesseract). Disable with
+`--no-ocr`; without any backend the run proceeds and records a warning.
+
 ## Small text (`--keep-text`)
 
 Diffusion regeneration redraws glyphs; small text often comes back garbled.
@@ -110,7 +120,7 @@ Colab already ships CUDA torch — do **not** install `requirements-ml.txt`
 !git clone https://github.com/losywee/ZimageRm /content/ZimageRm
 %cd /content/ZimageRm
 !pip uninstall -y torchao
-!pip install -r requirements.txt diffusers transformers accelerate peft safetensors 'diffsynth>=2.0.17,<3' beautifulsoup4 ftfy
+!pip install -r requirements.txt diffusers transformers accelerate peft safetensors 'diffsynth>=2.0.17,<3' beautifulsoup4 ftfy rapidocr-onnxruntime
 !pip install -e . --no-deps
 !zinvis /content/drive/MyDrive/2026090701 /content/drive/MyDrive/2026090701clean/ \
   --glob '*.png' --pipeline sdxl --low-vram --skip-existing
