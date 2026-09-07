@@ -21,6 +21,16 @@ from .vendor import sniff_vendor
 CHROMA_MIN_VRAM_GB = 30.0
 CHROMA_HARD_FLOOR_GB = 24.0
 STREAM_VRAM_GB = 20.0
+OOM_RETRY_SCALES = (0.75, 0.5)
+BACKOFF_PSNR_FLOOR = 20.0
+BACKOFF_FACTOR = 0.7
+BACKOFF_MIN_STRENGTH = 0.05
+
+
+def _is_oom(exc: BaseException) -> bool:
+    name = type(exc).__name__.lower()
+    msg = str(exc).lower()
+    return "outofmemory" in name or "out of memory" in msg
 
 
 class ZinvisEngine:
@@ -160,7 +170,16 @@ class ZinvisEngine:
                     Image.Resampling.LANCZOS,
                 )
             backend = self._backend_for(plan["pipeline"])
-            out = backend.run(working, plan["strength"], plan["seed"])
+            strength_v = plan["strength"]
+            try:
+                out = backend.run(working, strength_v, plan["seed"])
+            except Exception as exc:
+                if not _is_oom(exc):
+                    raise
+                out = self._retry_oom(backend, working, strength_v,
+                                      plan["seed"], record)
+                if out is None:
+                    raise
             if out.size != working.size:
                 out = out.resize(working.size, Image.Resampling.LANCZOS)
             use_keep = self.keep_text if keep_text is None else keep_text
@@ -170,11 +189,35 @@ class ZinvisEngine:
                 mask = detect_text_mask(working)
                 out = composite_original(out, working, mask)
             record.psnr = psnr(working, out)
+            backoff_stage = None
+            if (record.psnr < BACKOFF_PSNR_FLOOR
+                    and strength_v > BACKOFF_MIN_STRENGTH):
+                retry_s = max(BACKOFF_MIN_STRENGTH,
+                              strength_v * BACKOFF_FACTOR)
+                retry = backend.run(working, retry_s, plan["seed"])
+                if retry.size != working.size:
+                    retry = retry.resize(working.size,
+                                         Image.Resampling.LANCZOS)
+                if use_keep:
+                    from .textmask import composite_original, detect_text_mask
+
+                    retry = composite_original(
+                        retry, working, detect_text_mask(working))
+                retry_psnr = psnr(working, retry)
+                if retry_psnr > record.psnr:
+                    out = retry
+                    strength_v = retry_s
+                    record.psnr = retry_psnr
+                    backoff_stage = (f"strength_backoff(s={retry_s:.3f},"
+                                     f"psnr={retry_psnr:.1f})")
+            record.strength = strength_v
             if orig_size != working.size:
                 out = out.resize(orig_size, Image.Resampling.LANCZOS)
             save_stripped(out, out_p)
             record.stages = list(getattr(out, "info", {}).get(
                 "zinvis_stages", [plan["pipeline"]]))
+            if backoff_stage:
+                record.stages.append(backoff_stage)
             if use_keep:
                 record.stages.append("keep_text")
             record.status = "cleaned"
@@ -184,6 +227,33 @@ class ZinvisEngine:
             record.error = f"{type(exc).__name__}: {exc} | {' / '.join(tb)}"
         record.seconds = now() - t0
         return record
+
+    def _retry_oom(self, backend, working, strength, seed, record):
+        """Halve the working resolution and retry after a CUDA OOM."""
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
+        for scale in OOM_RETRY_SCALES:
+            small = working.resize(
+                (max(64, round(working.width * scale)),
+                 max(64, round(working.height * scale))),
+                Image.Resampling.LANCZOS,
+            )
+            try:
+                out = backend.run(small, strength, seed)
+            except Exception as exc:
+                if not _is_oom(exc):
+                    raise
+                continue
+            record.warnings.append(
+                f"oom_retry: CUDA OOM at {working.size}, retried at "
+                f"{small.size} (detail loss possible)")
+            return out
+        return None
 
     def run_dir(self, in_dir: str, out_dir: str, pipeline: str | None,
                 vendor: str | None = None, strength: float | None = None,

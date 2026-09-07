@@ -76,6 +76,16 @@ mask is conservative (small dense edge clusters only; large display type
 still regenerates). Without the flag, lowering `--strength` or using
 `--pipeline vae` also reduces glyph damage.
 
+## Automatic recovery
+
+- **CUDA OOM**: the engine empties the CUDA cache and retries the failed
+  image at 0.75x then 0.5x resolution instead of erroring (a warning is
+  recorded; some detail loss is possible).
+- **Overcooking**: if output PSNR drops below 20 dB, the engine retries once
+  at 0.7x strength and keeps the better result (`strength_backoff` stage).
+- **EXIF orientation**: phone photos are auto-rotated to display orientation
+  on load, so outputs never come out sideways.
+
 ## Install
 
 ```bash

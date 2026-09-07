@@ -46,7 +46,21 @@ def test_psnr():
     assert 52.0 < psnr(a, b) < 53.5
 
 
+def test_exif_orientation(tmp="/tmp/zinvis_exif_test"):
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    # EXIF orientation 6 = "rotate 90 CW to display": stored pixels are
+    # tall, load_rgb must return the wide display orientation.
+    tall = Image.new("RGB", (40, 80), "red")
+    exif = tall.getexif()
+    exif[274] = 6
+    src = p / "rot.jpg"
+    tall.save(src, exif=exif)
+    assert load_rgb(src).size == (80, 40)
+
+
 if __name__ == "__main__":
     test_save_strips_metadata()
     test_psnr()
+    test_exif_orientation()
     print("IO OK")

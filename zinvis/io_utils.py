@@ -11,8 +11,10 @@ JPEG_QUALITY = 95
 
 
 def load_rgb(path: str | Path) -> Image.Image:
+    from PIL.ImageOps import exif_transpose
+
     with Image.open(path) as img:
-        return img.convert("RGB")
+        return exif_transpose(img).convert("RGB")
 
 
 def save_stripped(img: Image.Image, path: str | Path) -> None:

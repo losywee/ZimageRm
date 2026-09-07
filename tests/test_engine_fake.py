@@ -214,6 +214,49 @@ def test_zimage_stream_fallback(tmp="/tmp/zinvis_fallback_test"):
     assert loads == [True, False], loads
 
 
+def test_oom_retry_and_backoff(tmp="/tmp/zinvis_recover_test"):
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    src = make_image(p / "in.png")
+
+    class OomOnceBackend(FakeBackend):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            self.tries = 0
+
+        def run(self, image, strength, seed):
+            self.tries += 1
+            if self.tries == 1:
+                raise RuntimeError("CUDA out of memory. Tried to allocate")
+            return super().run(image, strength, seed)
+
+    eng = setup_engine(p)
+    eng._backend_for = lambda name: OomOnceBackend()
+    r = eng.run_file(str(src), str(p / "oom.png"), "sdxl")
+    assert r.status == "cleaned", r.error
+    assert any("oom_retry" in w for w in r.warnings), r.warnings
+
+    class DarkBackend(FakeBackend):
+        def run(self, image, strength, seed):
+            # damage proportional to strength: lower strength -> higher PSNR
+            import numpy as np
+
+            arr = np.asarray(image).astype(np.float64)
+            shift = (strength / 0.4) * 200.0
+            arr = np.clip(arr - shift, 0, 255).astype(np.uint8)
+            out = Image.fromarray(arr, "RGB")
+            out.info["zinvis_stages"] = [f"dark(s={strength})"]
+            return out
+
+    eng2 = setup_engine(p)
+    eng2._backend_for = lambda name: DarkBackend()
+    r = eng2.run_file(str(src), str(p / "dark.png"), "sdxl",
+                      strength=0.4)
+    assert r.status == "cleaned", r.error
+    assert r.strength < 0.4, r.strength
+    assert any("strength_backoff" in s for s in r.stages), r.stages
+
+
 if __name__ == "__main__":
     test_run_file()
     test_auto_pipeline()
@@ -221,4 +264,5 @@ if __name__ == "__main__":
     test_error_and_max_side()
     test_vram_restore()
     test_zimage_stream_fallback()
+    test_oom_retry_and_backoff()
     print("ENGINE OK")
