@@ -15,11 +15,12 @@ class DuoBackend:
 
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
                  refine_strength: float = 0.18, psnr_floor: float = 24.0,
-                 low_vram: bool = False):
+                 low_vram: bool = False, stream: bool = False):
         self.chroma = ChromaBackend(device=device, hf_token=hf_token)
         self.zimage = ZImageBackend(
             device=device, hf_token=hf_token,
             prefer="diffsynth" if low_vram else "diffusers",
+            stream=stream,
         )
         self.refine_strength = refine_strength
         self.psnr_floor = psnr_floor
@@ -48,13 +49,14 @@ class DuoBackend:
 
 
 def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,
-                  low_vram: bool = False, **kwargs):
+                  low_vram: bool = False, stream: bool = False, **kwargs):
     if name == "chroma":
         return ChromaBackend(device=device, hf_token=hf_token)
     if name == "zimage":
         return ZImageBackend(
             device=device, hf_token=hf_token,
             prefer="diffsynth" if low_vram else "diffusers",
+            stream=stream,
         )
     if name == "sdxl":
         return SDXLBackend(device=device, hf_token=hf_token, low_vram=low_vram)
@@ -62,5 +64,5 @@ def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,
         return VAEBackend(device=device, hf_token=hf_token)
     if name == "duo":
         return DuoBackend(device=device, hf_token=hf_token,
-                          low_vram=low_vram, **kwargs)
+                          low_vram=low_vram, stream=stream, **kwargs)
     raise ValueError(f"unknown backend {name!r}; choose from {BACKEND_NAMES}")

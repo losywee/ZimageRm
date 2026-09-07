@@ -25,7 +25,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help="duo = Chroma1 + Z-Image refinement; default: auto "
                          "(zimage fp8-streaming on GPUs <30 GiB, duo otherwise)")
     ap.add_argument("--low-vram", action="store_true",
-                    help="force Z-Image fp8 disk-streaming mode (small cards)")
+                    help="force Z-Image DiffSynth mode (small cards)")
+    ap.add_argument("--stream", action="store_true",
+                    help="Z-Image DiffSynth disk-streaming (fp8): lower RAM, "
+                         "higher latency; default is CPU bf16 offload")
     ap.add_argument("--vendor", default=None,
                     choices=["google", "openai", "microsoft", "meta"],
                     help="strength cohort; auto-sniffs provenance when omitted")
@@ -54,6 +57,7 @@ def main(argv=None) -> int:
         refine_strength=args.refine_strength,
         psnr_floor=args.psnr_floor,
         low_vram=args.low_vram,
+        stream=args.stream,
     )
     in_path = Path(args.input)
 

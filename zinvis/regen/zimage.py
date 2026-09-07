@@ -31,14 +31,48 @@ def vram_limit_gb():
         return None
 
 
+_CPU_BF16_CONFIG = None
+
+
+def _cpu_bf16_config():
+    import torch
+
+    return {
+        "offload_dtype": torch.bfloat16,
+        "offload_device": "cpu",
+        "onload_dtype": torch.bfloat16,
+        "onload_device": "cpu",
+        "preparing_dtype": torch.bfloat16,
+        "preparing_device": "cuda",
+        "computation_dtype": torch.bfloat16,
+        "computation_device": "cuda",
+    }
+
+
+def _disk_stream_config():
+    import torch
+
+    return {
+        "offload_dtype": "disk",
+        "offload_device": "disk",
+        "onload_dtype": torch.float8_e4m3fn,
+        "onload_device": "cpu",
+        "preparing_dtype": torch.bfloat16,
+        "preparing_device": "cuda",
+        "computation_dtype": torch.bfloat16,
+        "computation_device": "cuda",
+    }
+
+
 class ZImageBackend:
     name = "zimage"
 
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
-                 prefer: str = "diffusers"):
+                 prefer: str = "diffusers", stream: bool = False):
         self.device = device
         self.hf_token = hf_token
         self.prefer = prefer
+        self.stream = stream
         self._pipe = None
         self.mode: str | None = None
 
@@ -84,16 +118,7 @@ class ZImageBackend:
                 "with: pip install diffsynth"
             ) from exc
 
-        config = {
-            "offload_dtype": "disk",
-            "offload_device": "disk",
-            "onload_dtype": torch.float8_e4m3fn,
-            "onload_device": "cpu",
-            "preparing_dtype": torch.bfloat16,
-            "preparing_device": "cuda",
-            "computation_dtype": torch.bfloat16,
-            "computation_device": "cuda",
-        }
+        config = _disk_stream_config() if self.stream else _cpu_bf16_config()
         model_configs = [
             ModelConfig(
                 model_id=ZIMAGE_MODEL_ID,

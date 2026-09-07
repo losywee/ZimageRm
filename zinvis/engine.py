@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from pathlib import Path
 
 from PIL import Image
@@ -28,12 +29,13 @@ class ZinvisEngine:
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
                  refine_strength: float = profiles.DUO_REFINE_STRENGTH,
                  psnr_floor: float = profiles.DEFAULT_PSNR_FLOOR,
-                 low_vram: bool = False):
+                 low_vram: bool = False, stream: bool = False):
         self.device = device
         self.hf_token = hf_token
         self.refine_strength = refine_strength
         self.psnr_floor = psnr_floor
         self.low_vram = low_vram
+        self.stream = stream
         self._backend = None
         self._backend_name: str | None = None
 
@@ -44,6 +46,7 @@ class ZinvisEngine:
                 low_vram=self.low_vram or (
                     (vram_gb() or 999.0) < STREAM_VRAM_GB
                 ),
+                stream=self.stream,
                 refine_strength=self.refine_strength,
                 psnr_floor=self.psnr_floor,
             )
@@ -162,7 +165,8 @@ class ZinvisEngine:
             record.status = "cleaned"
         except Exception as exc:
             record.status = "error"
-            record.error = f"{type(exc).__name__}: {exc}"
+            tb = traceback.format_exc().strip().splitlines()[-4:]
+            record.error = f"{type(exc).__name__}: {exc} | {' / '.join(tb)}"
         record.seconds = now() - t0
         return record
 
