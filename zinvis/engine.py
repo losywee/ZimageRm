@@ -334,6 +334,13 @@ class ZinvisEngine:
                     seed=profiles.resolve_seed(seed),
                     status="skipped_existing",
                 )
+                if self.ocr:
+                    from . import ocr as ocr_mod
+
+                    try:
+                        r.text = ocr_mod.extract_text(load_rgb(p))
+                    except Exception:
+                        r.text = []
             else:
                 r = self.run_file(str(p), str(out_p), pipeline, vendor,
                                   strength, seed, max_side, keep_text)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zinvis"
-version = "0.1.0"
+version = "0.2.0"
 description = "Remove invisible AI image watermarks by diffusion regeneration with Z-Image Turbo and Chroma1"
 requires-python = ">=3.10"
 readme = "README.md"

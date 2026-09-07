@@ -133,6 +133,10 @@ def _print_record(r: ImageRecord) -> None:
         return
     print(f"psnr    : {r.psnr:.1f} dB")
     print(f"stages  : {', '.join(r.stages)}")
+    if r.text:
+        print("text    :")
+        for t in r.text:
+            print(f"  - {t}")
     print(f"time    : {r.seconds:.1f}s")
 
 

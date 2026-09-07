@@ -141,6 +141,11 @@ the sdxl backend also patches this gate at runtime as a fallback.)
 
 | Pipeline | Fetches | Size |
 |---|---|---|
+| `vae` | `stabilityai/sd-vae-ft-mse` | ~0.35 GB |
+| `lcm` | `SimianLuo/LCM_Dreamshaper_v7` | ~4.3 GB |
+| `sana` | `Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers` | ~7.7 GB |
+| `sdxl` | `stabilityai/stable-diffusion-xl-base-1.0` (fp16) + `ByteDance/SDXL-Lightning` LoRA | ~8 GB |
+| `sdxl-canny` | sdxl + `diffusers/controlnet-canny-sdxl-1.0` | ~10.5 GB |
 | `chroma` / `duo` | `lodestones/Chroma1-HD` (bf16) | ~27.5 GB |
 | `zimage` | `Tongyi-MAI/Z-Image-Turbo` | ~21 GB |
 

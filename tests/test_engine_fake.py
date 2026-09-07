@@ -362,6 +362,30 @@ def test_ocr_capture(tmp="/tmp/zinvis_ocr_test"):
         ocr_mod.extract_text, ocr_mod.backend_name = orig_et, orig_bn
 
 
+def test_ocr_skipped_files(tmp="/tmp/zinvis_ocr_skip_test"):
+    import zinvis.ocr as ocr_mod
+
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    make_image(p / "a.png")
+    make_image(p / "b.png")
+    orig_et, orig_bn = ocr_mod.extract_text, ocr_mod.backend_name
+    try:
+        ocr_mod.extract_text = lambda img: ["pre-existing caption"]
+        ocr_mod.backend_name = lambda: "fake"
+
+        eng = setup_engine(p)
+        eng.run_dir(str(p), str(p / "out"), "sdxl")
+        # second run: everything skipped, but text must still be captured
+        br = eng.run_dir(str(p), str(p / "out"), "sdxl",
+                         skip_existing=True)
+        assert br.summary["skipped"] == 2, br.summary
+        assert all(r.text == ["pre-existing caption"] for r in br.images), \
+            [r.text for r in br.images]
+    finally:
+        ocr_mod.extract_text, ocr_mod.backend_name = orig_et, orig_bn
+
+
 if __name__ == "__main__":
     test_run_file()
     test_auto_pipeline()
@@ -371,4 +395,5 @@ if __name__ == "__main__":
     test_zimage_stream_fallback()
     test_oom_retry_and_backoff()
     test_ocr_capture()
+    test_ocr_skipped_files()
     print("ENGINE OK")
