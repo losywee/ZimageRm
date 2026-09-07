@@ -105,11 +105,17 @@ Colab already ships CUDA torch — do **not** install `requirements-ml.txt`
 ```python
 !git clone https://github.com/losywee/ZimageRm /content/ZimageRm
 %cd /content/ZimageRm
-!pip install -r requirements.txt diffusers transformers accelerate safetensors 'diffsynth>=2.0.17,<3'
+!pip uninstall -y torchao
+!pip install -r requirements.txt diffusers transformers accelerate peft safetensors 'diffsynth>=2.0.17,<3'
 !pip install -e . --no-deps
 !zinvis /content/drive/MyDrive/2026090701 /content/drive/MyDrive/2026090701clean/ \
-  --glob '*.png' --pipeline zimage --low-vram --skip-existing
+  --glob '*.png' --pipeline sdxl --low-vram --skip-existing
 ```
+
+(`pip uninstall -y torchao` matters: Colab ships torchao 0.10, and peft >= 0.20
+raises an ImportError while loading LoRA adapters when torchao < 0.16 is
+installed. zinvis never uses torchao quantization, so removing it is safe;
+the sdxl backend also patches this gate at runtime as a fallback.)
 
 ### Models and disk usage
 

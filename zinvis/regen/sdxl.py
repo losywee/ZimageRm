@@ -21,6 +21,29 @@ def sdxl_target_size(width: int, height: int) -> tuple[int, int]:
     )
 
 
+def peft_torchao_compat() -> None:
+    """Silence peft's hard torchao gate.
+
+    peft >= 0.20 raises ImportError when torchao < 0.16.0 is installed
+    (Colab ships 0.10). zinvis never uses torchao quantization, so if an
+    old torchao is present we stub peft's availability check to False —
+    the same outcome as not having torchao installed at all.
+    """
+    try:
+        import importlib.metadata as im
+
+        import peft.import_utils as iu
+    except Exception:
+        return
+    try:
+        ver = im.version("torchao")
+        parts = tuple(int(p) for p in ver.split(".")[:2])
+    except Exception:
+        return
+    if parts < (0, 16):
+        iu.is_torchao_available = lambda: False
+
+
 class SDXLBackend:
     """SDXL-base + SDXL-Lightning 4-step LoRA img2img — the calibrated
     lightweight global pass (floors: google 0.25 / openai 0.15 / unknown 0.25).
@@ -44,6 +67,7 @@ class SDXLBackend:
         if self._pipe is not None:
             return self._pipe
         import torch
+        peft_torchao_compat()
         from diffusers import (
             AutoPipelineForImage2Image,
             EulerDiscreteScheduler,
@@ -61,6 +85,7 @@ class SDXLBackend:
                 SDXL_MODEL_ID, **kwargs,
             )
         pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+        peft_torchao_compat()
         pipe.load_lora_weights(
             SDXL_LIGHTNING_MODEL_ID,
             weight_name=SDXL_LIGHTNING_LORA,
