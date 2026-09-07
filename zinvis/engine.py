@@ -71,7 +71,7 @@ class ZinvisEngine:
                 resolved = "zimage"
                 warnings.append(
                     f"auto: {vram:.0f} GiB VRAM (<{CHROMA_MIN_VRAM_GB:.0f}) -> "
-                    "zimage fp8-streaming; Chroma1 needs ~29 GiB"
+                    "zimage (DiffSynth CPU offload); Chroma1 needs ~29 GiB"
                 )
             else:
                 resolved = "duo"

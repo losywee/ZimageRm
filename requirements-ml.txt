@@ -3,4 +3,4 @@ diffusers>=0.35
 transformers>=4.40
 accelerate>=0.20
 safetensors>=0.4
-diffsynth>=1.1
+diffsynth>=2.0.17,<3

@@ -178,10 +178,47 @@ def p2_out():
     return _OUT
 
 
+def test_zimage_stream_fallback(tmp="/tmp/zinvis_fallback_test"):
+    from zinvis.regen.zimage import ZImageBackend
+
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    src = make_image(p / "in.png")
+
+    class FlakyPipe:
+        def __init__(self):
+            self.calls = 0
+
+        def __call__(self, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                raise NotImplementedError(
+                    "Cannot copy out of meta tensor; no data!")
+            return Image.open(src).convert("RGB")
+
+    be = ZImageBackend(device="cpu", stream=True)
+    flaky = FlakyPipe()
+    be._pipe = flaky
+    be.mode = "diffsynth"
+    loads = []
+
+    def _fake_load():
+        loads.append(be.stream)
+        be._pipe = flaky
+        return flaky
+
+    be._load = _fake_load
+    out = be.run(Image.open(src).convert("RGB"), 0.3, 0)
+    assert out.size == (64, 48)
+    assert be.stream is False, "backend must flip off disk streaming"
+    assert loads == [True, False], loads
+
+
 if __name__ == "__main__":
     test_run_file()
     test_auto_pipeline()
     test_batch()
     test_error_and_max_side()
     test_vram_restore()
+    test_zimage_stream_fallback()
     print("ENGINE OK")

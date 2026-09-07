@@ -44,6 +44,9 @@ class DuoBackend:
             out = refined
         else:
             stages.append(f"zimage_refine_skipped(psnr={drop:.1f}<{self.psnr_floor:.1f})")
+        if self.low_vram:
+            self.zimage.unload()
+            stages.append("zimage_unloaded(low_vram)")
         out.info.setdefault("zinvis_stages", stages)
         return out
 

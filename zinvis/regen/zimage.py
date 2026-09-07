@@ -22,11 +22,12 @@ def zimage_target_size(width: int, height: int) -> tuple[int, int]:
 
 
 def vram_limit_gb():
-    """Free-VRAM budget (total minus headroom) for DiffSynth's paging manager."""
+    """VRAM budget for DiffSynth's paging manager: free GiB minus headroom."""
     import torch
 
     try:
-        return max(1.0, torch.cuda.mem_get_info("cuda")[1] / 1024**3 - 0.5)
+        free, _total = torch.cuda.mem_get_info("cuda")
+        return max(1.0, free / 1024**3 - 0.5)
     except Exception:
         return None
 
@@ -152,8 +153,32 @@ class ZImageBackend:
     def run(self, image, strength: float, seed: int):
         self._load()
         if self.mode == "diffsynth":
-            return self._run_diffsynth(image, strength, seed)
+            try:
+                return self._run_diffsynth(image, strength, seed)
+            except NotImplementedError as exc:
+                if "meta" not in str(exc) or not self.stream:
+                    raise
+                # Disk streaming hit unmaterialized meta params: rebuild once
+                # with CPU bf16 offload (no meta tensors) and retry.
+                self.stream = False
+                self._pipe = None
+                self._load()
+                return self._run_diffsynth(image, strength, seed)
         return self._run_diffusers(image, strength, seed)
+
+    def unload(self):
+        if self._pipe is None:
+            return
+        del self._pipe
+        self._pipe = None
+        self.mode = None
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
 
     def _run_diffusers(self, image, strength: float, seed: int):
         import torch

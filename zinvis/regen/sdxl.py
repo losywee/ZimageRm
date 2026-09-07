@@ -65,9 +65,10 @@ class SDXLBackend:
             SDXL_LIGHTNING_MODEL_ID,
             weight_name=SDXL_LIGHTNING_LORA,
         )
-        pipe.to(self.device)
         if self.low_vram:
             pipe.enable_model_cpu_offload()
+        else:
+            pipe.to(self.device)
         self._pipe = pipe
         return self._pipe
 
