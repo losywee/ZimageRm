@@ -146,9 +146,29 @@ def test_vram_restore():
         em.vram_gb = lambda: 15.0
         eng = em.ZinvisEngine(device="cpu")
         assert eng.plan(None, None, None, None)["pipeline"] == "zimage"
+
+        eng_hard = em.ZinvisEngine(device="cpu")
+        eng_hard._backend_for = lambda name: FakeBackend()
+        r = eng_hard.run_file(str(p2_src()), str(p2_out()), "chroma")
+        assert r.status == "error"
+        assert "refusing to download" in r.error, r.error
     finally:
         em.vram_gb = original
     assert em.vram_gb is original
+
+
+_SRC = "/tmp/zinvis_vram_gate_in.png"
+_OUT = "/tmp/zinvis_vram_gate_out.png"
+
+
+def p2_src():
+    if not Path(_SRC).exists():
+        make_image(Path(_SRC))
+    return _SRC
+
+
+def p2_out():
+    return _OUT
 
 
 if __name__ == "__main__":

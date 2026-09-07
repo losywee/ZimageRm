@@ -18,6 +18,7 @@ from .regen import build_backend
 from .vendor import sniff_vendor
 
 CHROMA_MIN_VRAM_GB = 30.0
+CHROMA_HARD_FLOOR_GB = 24.0
 STREAM_VRAM_GB = 20.0
 
 
@@ -125,6 +126,14 @@ class ZinvisEngine:
 
         try:
             self._require_device()
+            vram = vram_gb()
+            if plan["pipeline"] in ("chroma", "duo") and vram is not None \
+                    and vram < CHROMA_HARD_FLOOR_GB:
+                raise RuntimeError(
+                    f"{plan['pipeline']} needs ~29 GiB VRAM but this card has "
+                    f"{vram:.0f} GiB; refusing to download ~33 GB of Chroma "
+                    "weights that cannot run. Use --pipeline zimage."
+                )
             img = load_rgb(in_p)
             orig_size = img.size
             working = img
