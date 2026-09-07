@@ -24,6 +24,10 @@ SDXL_FLOORS = {
     "openai": 0.15,
 }
 SDXL_UNKNOWN_FLOOR = 0.25
+# Lightning's 4-step distillation bounds the usable sigma range: strengths
+# below the lowest calibrated floor push the executed timesteps outside the
+# training distribution and the UNet emits noise instead of content.
+SDXL_MIN_STRENGTH = 0.15
 
 SANA_FLOORS = {
     "google": 0.30,

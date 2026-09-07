@@ -9,6 +9,7 @@ SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
 SDXL_LIGHTNING_LORA = "sdxl_lightning_4step_lora.safetensors"
 SDXL_EFFECTIVE_STEPS = 4
 SDXL_CFG = 1.0
+SDXL_MIN_STRENGTH = 0.15
 SDXL_PROMPT = "high quality, sharp, detailed, faithful to the original"
 SDXL_NEGATIVE = "blurry, lowres, distorted text, garbled text, artifacts"
 LATENT_GRID = 8
@@ -104,6 +105,9 @@ class SDXLBackend:
         import torch
 
         pipe = self._load()
+        # Clamp to the distillation floor: below it the executed timesteps
+        # fall outside Lightning's trained sigma range and output noise.
+        strength = max(float(strength), SDXL_MIN_STRENGTH)
         orig_size = image.size
         target = sdxl_target_size(*orig_size)
         prepared = image if image.size == target else image.resize(

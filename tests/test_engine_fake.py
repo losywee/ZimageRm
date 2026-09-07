@@ -72,6 +72,11 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
                      strength=0.2, seed=3)
     assert r.strength == 0.2
 
+    r = eng.run_file(str(src), str(p / "out9.png"), "sdxl",
+                     strength=0.05)
+    assert r.strength == 0.15, r.strength
+    assert any("clamping" in w for w in r.warnings), r.warnings
+
     r = eng.run_file(str(src), str(p / "out5.png"), "sdxl")
     assert r.resolved_pipeline == "sdxl" and r.strength == 0.25
 

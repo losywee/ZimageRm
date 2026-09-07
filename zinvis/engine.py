@@ -103,6 +103,13 @@ class ZinvisEngine:
         resolved = profiles.resolve_pipeline(resolved, v,
                                              route=was_auto and resolved == "duo")
         s = profiles.resolve_strength(resolved, v, strength)
+        if resolved == "sdxl" and s < profiles.SDXL_MIN_STRENGTH:
+            warnings.append(
+                f"sdxl strength {s} is below the Lightning distillation "
+                f"floor ({profiles.SDXL_MIN_STRENGTH}); clamping — lower "
+                "values produce out-of-schedule noise"
+            )
+            s = profiles.SDXL_MIN_STRENGTH
         seed_v = profiles.resolve_seed(seed)
         if strength is None and resolved == "zimage":
             warnings.append(

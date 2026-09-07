@@ -64,6 +64,10 @@ configuration). Z-Image, SANA and LCM floors are **uncalibrated defaults**;
 `*` = no measured cohort, falls to the unknown floor (conservative). Vendor
 is auto-sniffed from C2PA/XMP provenance in the file (or pass `--vendor`).
 
+SDXL strengths below `0.15` are clamped up: the Lightning 4-step
+distillation bounds the usable sigma range, and lower strengths make the
+executed timesteps fall outside it (output degenerates into noise).
+
 ## Pre-processing text capture
 
 Before the model touches an image, zinvis runs OCR on the original and
