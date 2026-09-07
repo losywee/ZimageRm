@@ -50,10 +50,11 @@ class SDXLCannyBackend:
     name = "sdxl-canny"
 
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
-                 low_vram: bool = False):
+                 low_vram: bool = False, control_scale: float = 0.5):
         self.device = device
         self.hf_token = hf_token
         self.low_vram = low_vram
+        self.control_scale = control_scale
         self._pipe = None
 
     def _load(self):
@@ -137,7 +138,7 @@ class SDXLCannyBackend:
             negative_prompt=SDXL_CANNY_NEGATIVE,
             image=prepared,
             control_image=control,
-            controlnet_conditioning_scale=SDXL_CANNY_CONTROL_SCALE,
+            controlnet_conditioning_scale=self.control_scale,
             strength=strength,
             num_inference_steps=steps,
             guidance_scale=SDXL_CFG,

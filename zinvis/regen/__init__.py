@@ -19,7 +19,8 @@ class DuoBackend:
 
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
                  refine_strength: float = 0.18, psnr_floor: float = 24.0,
-                 low_vram: bool = False, stream: bool | None = None):
+                 low_vram: bool = False, stream: bool | None = None,
+                 control_scale: float = 0.5):
         self.chroma = ChromaBackend(device=device, hf_token=hf_token)
         self.zimage = ZImageBackend(
             device=device, hf_token=hf_token,
@@ -29,6 +30,7 @@ class DuoBackend:
         self.refine_strength = refine_strength
         self.psnr_floor = psnr_floor
         self.low_vram = low_vram
+        self.control_scale = control_scale
 
     def run(self, image, strength: float, seed: int):
         from ..io_utils import psnr
@@ -57,7 +59,7 @@ class DuoBackend:
 
 def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,
                   low_vram: bool = False, stream: bool | None = None,
-                  **kwargs):
+                  control_scale: float = 0.5, **kwargs):
     if name == "chroma":
         return ChromaBackend(device=device, hf_token=hf_token)
     if name == "zimage":
@@ -70,7 +72,8 @@ def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,
         return SDXLBackend(device=device, hf_token=hf_token, low_vram=low_vram)
     if name == "sdxl-canny":
         return SDXLCannyBackend(device=device, hf_token=hf_token,
-                                low_vram=low_vram)
+                                low_vram=low_vram,
+                                control_scale=control_scale)
     if name == "sana":
         return SanaBackend(device=device, hf_token=hf_token, low_vram=low_vram)
     if name == "lcm":

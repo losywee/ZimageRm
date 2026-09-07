@@ -40,7 +40,8 @@ class ZinvisEngine:
                  refine_strength: float = profiles.DUO_REFINE_STRENGTH,
                  psnr_floor: float = profiles.DEFAULT_PSNR_FLOOR,
                  low_vram: bool = False, stream: bool | None = None,
-                 keep_text: bool = False, ocr: bool = True):
+                 keep_text: bool = False, ocr: bool = True,
+                 control_scale: float = 0.5):
         self.device = device
         self.hf_token = hf_token
         self.refine_strength = refine_strength
@@ -49,6 +50,7 @@ class ZinvisEngine:
         self.stream = stream
         self.keep_text = keep_text
         self.ocr = ocr
+        self.control_scale = control_scale
         self._backend = None
         self._backend_name: str | None = None
         # Sticky downscale: once an OOM forces a smaller working size, later
@@ -65,6 +67,7 @@ class ZinvisEngine:
                 stream=self.stream,
                 refine_strength=self.refine_strength,
                 psnr_floor=self.psnr_floor,
+                control_scale=self.control_scale,
             )
             self._backend_name = name
         return self._backend
@@ -149,9 +152,9 @@ class ZinvisEngine:
                 "keep-text: original pixels are restored over detected small "
                 "text, so any watermark signal under those pixels survives"
             )
-        if strength is not None and strength < 0.05:
+        if s < 0.05:
             warnings.append(
-                f"strength {strength} is very low; step count is capped at "
+                f"strength {s} is very low; step count is capped at "
                 f"{profiles.MAX_REQUESTED_STEPS}"
             )
         return {

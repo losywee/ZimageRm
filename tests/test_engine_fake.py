@@ -103,6 +103,19 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
     assert r.resolved_pipeline == "sdxl-canny" and r.strength == 0.30
     assert any("sdxl-canny floors" in w for w in r.warnings), r.warnings
 
+    # clamped strength must not also emit the stale "very low" warning
+    r = eng.run_file(str(src), str(p / "out11.png"), "sdxl",
+                     strength=0.04)
+    assert r.strength == 0.15, r.strength
+    assert any("clamping" in w for w in r.warnings), r.warnings
+    assert not any("very low" in w for w in r.warnings), r.warnings
+
+    # control-scale plumbing reaches the backend
+    from zinvis.regen import build_backend
+
+    b = build_backend("sdxl-canny", device="cpu", control_scale=0.8)
+    assert b.control_scale == 0.8, b.control_scale
+
 
 def test_auto_pipeline(tmp="/tmp/zinvis_auto_test"):
     p = Path(tmp)

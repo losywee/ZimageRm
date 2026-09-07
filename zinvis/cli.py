@@ -47,6 +47,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help="restore original pixels over detected small text "
                          "(prevents glyph garbling; watermark signal under "
                          "text survives)")
+    ap.add_argument("--control-scale", default=0.5, type=float,
+                    help="sdxl-canny: ControlNet conditioning strength "
+                         "(higher = text preserved better, watermark "
+                         "disrupted less)")
     ap.add_argument("--no-ocr", action="store_true",
                     help="skip pre-processing text extraction into "
                          "summary.json (default: on when an OCR backend is "
@@ -74,6 +78,7 @@ def main(argv=None) -> int:
         stream=stream,
         keep_text=args.keep_text,
         ocr=not args.no_ocr,
+        control_scale=args.control_scale,
     )
     in_path = Path(args.input)
 
