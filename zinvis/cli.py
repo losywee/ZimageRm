@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--pipeline", default=None,
                     choices=list(profiles.PROFILES),
                     help="duo = Chroma1 + Z-Image refinement; default: auto "
-                         "(zimage with CPU offload on GPUs <30 GiB, duo otherwise)")
+                         "(zimage disk-streaming on GPUs <30 GiB, duo otherwise)")
     ap.add_argument("--low-vram", action="store_true",
                     help="force Z-Image DiffSynth disk-streaming (small cards)")
     ap.add_argument("--stream", action="store_true", default=None,

@@ -97,6 +97,20 @@ pip install -e .
 An NVIDIA CUDA GPU is required for the diffusion stages (bf16). Everything
 else (provenance sniffing, metadata stripping, reports) runs anywhere.
 
+### Google Colab (15 GB card)
+
+Colab already ships CUDA torch — do **not** install `requirements-ml.txt`
+(it would reinstall torch and risk a CUDA mismatch):
+
+```python
+!git clone https://github.com/losywee/ZimageRm /content/ZimageRm
+%cd /content/ZimageRm
+!pip install -r requirements.txt diffusers transformers accelerate safetensors 'diffsynth>=2.0.17,<3'
+!pip install -e . --no-deps
+!zinvis /content/drive/MyDrive/2026090701 /content/drive/MyDrive/2026090701clean/ \
+  --glob '*.png' --pipeline zimage --low-vram --skip-existing
+```
+
 ### Models and disk usage
 
 | Pipeline | Fetches | Size |

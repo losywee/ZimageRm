@@ -22,7 +22,7 @@ def make_text_image(path, size=(320, 200)):
 def make_smooth_image(path, size=(320, 200)):
     x = np.tile(np.linspace(0, 255, size[0], dtype=np.uint8), (size[1], 1))
     arr = np.stack([x, x, x], axis=-1)
-    img = Image.fromarray(arr, "RGB")
+    img = Image.fromarray(arr)
     img.save(path)
     return img
 

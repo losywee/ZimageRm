@@ -50,6 +50,9 @@ class ZinvisEngine:
         self.keep_text = keep_text
         self._backend = None
         self._backend_name: str | None = None
+        # Sticky downscale: once an OOM forces a smaller working size, later
+        # batch files start there instead of re-OOMing one by one.
+        self._oom_scale: float = 1.0
 
     def _backend_for(self, name: str):
         if self._backend is None or self._backend_name != name:
@@ -83,7 +86,7 @@ class ZinvisEngine:
                 resolved = "zimage"
                 warnings.append(
                     f"auto: {vram:.0f} GiB VRAM (<{CHROMA_MIN_VRAM_GB:.0f}) -> "
-                    "zimage (DiffSynth CPU offload); Chroma1 needs ~29 GiB"
+                    "zimage (DiffSynth disk-streaming); Chroma1 needs ~29 GiB"
                 )
             else:
                 resolved = "duo"
@@ -163,8 +166,12 @@ class ZinvisEngine:
             img = load_rgb(in_p)
             orig_size = img.size
             working = img
-            if max_side and max(img.size) > max_side:
-                scale = max_side / max(img.size)
+            eff_max = max_side
+            if self._oom_scale < 1.0 and max(img.size) > 64:
+                eff_max = min(eff_max or max(img.size),
+                              round(max(img.size) * self._oom_scale))
+            if eff_max and max(img.size) > eff_max:
+                scale = eff_max / max(img.size)
                 working = img.resize(
                     (round(img.width * scale), round(img.height * scale)),
                     Image.Resampling.LANCZOS,
@@ -194,22 +201,32 @@ class ZinvisEngine:
                     and strength_v > BACKOFF_MIN_STRENGTH):
                 retry_s = max(BACKOFF_MIN_STRENGTH,
                               strength_v * BACKOFF_FACTOR)
-                retry = backend.run(working, retry_s, plan["seed"])
-                if retry.size != working.size:
-                    retry = retry.resize(working.size,
-                                         Image.Resampling.LANCZOS)
-                if use_keep:
-                    from .textmask import composite_original, detect_text_mask
+                try:
+                    retry = backend.run(working, retry_s, plan["seed"])
+                except Exception as exc:
+                    if not _is_oom(exc):
+                        raise
+                    record.warnings.append(
+                        "strength_backoff skipped: retry OOMed; kept "
+                        "first result")
+                    retry = None
+                if retry is not None:
+                    if retry.size != working.size:
+                        retry = retry.resize(working.size,
+                                             Image.Resampling.LANCZOS)
+                    if use_keep:
+                        from .textmask import composite_original, \
+                            detect_text_mask
 
-                    retry = composite_original(
-                        retry, working, detect_text_mask(working))
-                retry_psnr = psnr(working, retry)
-                if retry_psnr > record.psnr:
-                    out = retry
-                    strength_v = retry_s
-                    record.psnr = retry_psnr
-                    backoff_stage = (f"strength_backoff(s={retry_s:.3f},"
-                                     f"psnr={retry_psnr:.1f})")
+                        retry = composite_original(
+                            retry, working, detect_text_mask(working))
+                    retry_psnr = psnr(working, retry)
+                    if retry_psnr > record.psnr:
+                        out = retry
+                        strength_v = retry_s
+                        record.psnr = retry_psnr
+                        backoff_stage = (f"strength_backoff(s={retry_s:.3f},"
+                                         f"psnr={retry_psnr:.1f})")
             record.strength = strength_v
             if orig_size != working.size:
                 out = out.resize(orig_size, Image.Resampling.LANCZOS)
@@ -249,9 +266,12 @@ class ZinvisEngine:
                 if not _is_oom(exc):
                     raise
                 continue
+            self._oom_scale = min(self._oom_scale,
+                                  small.width / working.width)
             record.warnings.append(
                 f"oom_retry: CUDA OOM at {working.size}, retried at "
-                f"{small.size} (detail loss possible)")
+                f"{small.size} (detail loss possible; later files start "
+                f"at {self._oom_scale:.2f}x)")
             return out
         return None
 

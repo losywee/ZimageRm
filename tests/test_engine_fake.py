@@ -18,9 +18,12 @@ class FakeBackend:
         self.calls = []
 
     def run(self, image, strength, seed):
+        import numpy as np
+
         self.calls.append((image.size, strength, seed))
-        out = image.copy()
-        out.putdata([(min(255, r + 3), g, b) for r, g, b in image.getdata()])
+        arr = np.asarray(image).astype(np.int16)
+        arr[..., 0] = np.clip(arr[..., 0] + 3, 0, 255)
+        out = Image.fromarray(arr.astype(np.uint8))
         out.info["zinvis_stages"] = ["fake(s=1)"]
         return out
 
@@ -37,7 +40,7 @@ def make_image(path, size=(64, 48)):
 
     rng = np.random.default_rng(1)
     arr = rng.integers(0, 256, size=(size[1], size[0], 3), dtype=np.uint8)
-    Image.fromarray(arr, "RGB").save(path)
+    Image.fromarray(arr).save(path)
     return Path(path)
 
 
@@ -244,7 +247,7 @@ def test_oom_retry_and_backoff(tmp="/tmp/zinvis_recover_test"):
             arr = np.asarray(image).astype(np.float64)
             shift = (strength / 0.4) * 200.0
             arr = np.clip(arr - shift, 0, 255).astype(np.uint8)
-            out = Image.fromarray(arr, "RGB")
+            out = Image.fromarray(arr)
             out.info["zinvis_stages"] = [f"dark(s={strength})"]
             return out
 
@@ -255,6 +258,44 @@ def test_oom_retry_and_backoff(tmp="/tmp/zinvis_recover_test"):
     assert r.status == "cleaned", r.error
     assert r.strength < 0.4, r.strength
     assert any("strength_backoff" in s for s in r.stages), r.stages
+
+    class OomBackoffBackend(FakeBackend):
+        def run(self, image, strength, seed):
+            import numpy as np
+
+            if strength < 0.4:
+                raise RuntimeError("CUDA out of memory. Tried to allocate")
+            arr = np.asarray(image).astype(np.float64) - 200.0
+            out = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+            out.info["zinvis_stages"] = ["oomback(s=1)"]
+            return out
+
+    eng3 = setup_engine(p)
+    eng3._backend_for = lambda name: OomBackoffBackend()
+    r = eng3.run_file(str(src), str(p / "oomback.png"), "sdxl",
+                      strength=0.4)
+    assert r.status == "cleaned", r.error
+    assert r.strength == 0.4, r.strength
+    assert any("backoff skipped" in w for w in r.warnings), r.warnings
+
+    # sticky scale-down: second file starts at the reduced size
+    seen_sizes = []
+
+    class SizeSpyBackend(FakeBackend):
+        def run(self, image, strength, seed):
+            seen_sizes.append(image.size)
+            if len(seen_sizes) == 1:
+                raise RuntimeError("CUDA out of memory. Tried to allocate")
+            return super().run(image, strength, seed)
+
+    eng4 = setup_engine(p)
+    eng4._backend_for = lambda name: SizeSpyBackend()
+    make_image(p / "c.png", size=(256, 192))
+    make_image(p / "d.png", size=(256, 192))
+    br = eng4.run_dir(str(p), str(p / "sticky"), "sdxl")
+    assert br.summary["cleaned"] >= 3, br.summary
+    assert eng4._oom_scale < 1.0, eng4._oom_scale
+    assert seen_sizes[1][0] < 256, seen_sizes
 
 
 if __name__ == "__main__":

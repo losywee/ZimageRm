@@ -4,7 +4,6 @@ import os
 
 from PIL import Image
 
-from ..profiles import requested_steps
 
 ZIMAGE_MODEL_ID = "Tongyi-MAI/Z-Image-Turbo"
 ZIMAGE_STEPS = 8
@@ -209,7 +208,10 @@ class ZImageBackend:
             strength=float(strength),
             prompt=ZIMAGE_PROMPT,
             negative_prompt=ZIMAGE_NEGATIVE,
-            num_inference_steps=requested_steps(ZIMAGE_STEPS, strength),
+            # Fixed 8 steps like the DiffSynth path and the reference
+            # (FACE_STEPS=8): step compensation would break the strength
+            # calibration the floors are bound to.
+            num_inference_steps=ZIMAGE_STEPS,
             guidance_scale=ZIMAGE_CFG,
             generator=generator,
         ).images[0]
