@@ -6,3 +6,4 @@ zinvis_scratch/
 *.egg-info/
 build/
 dist/
+.DS_Store
