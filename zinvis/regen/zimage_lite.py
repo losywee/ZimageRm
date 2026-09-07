@@ -9,7 +9,12 @@ GGUF_FILES = {
     "q4": "z-image-turbo-Q4_K_M.gguf",
 }
 ZIMAGE_LITE_STEPS = 8
-ZIMAGE_LITE_CFG = 1.0
+# diffusers' ZImage pipelines enable CFG for ANY guidance_scale > 0; the
+# Turbo transformer is distilled for unguided inference, so 0.0 is the
+# "no CFG" value (DiffSynth's cfg_scale=1.0 equivalent). Passing 1.0
+# enabled CFG on the embeds-only path and raised the negative-embeds
+# validation error.
+ZIMAGE_LITE_CFG = 0.0
 ZIMAGE_LITE_PROMPT = "high quality, sharp, detailed, faithful to the original"
 # Same 16-divisibility requirement as zimage (Flux VAE scale 8 x 2).
 LATENT_GRID = 16

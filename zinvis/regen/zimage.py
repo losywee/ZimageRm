@@ -8,6 +8,10 @@ from PIL import Image
 ZIMAGE_MODEL_ID = "Tongyi-MAI/Z-Image-Turbo"
 ZIMAGE_STEPS = 8
 ZIMAGE_CFG = 1.0
+# DiffSynth skips CFG at cfg_scale==1.0, but diffusers' ZImage pipelines
+# enable CFG for any guidance_scale > 0 — so the diffusers path must pass
+# 0.0 to stay on the same unguided turbo recipe as the reference.
+ZIMAGE_DIFFUSERS_GUIDANCE = 0.0
 ZIMAGE_PROMPT = "high quality, sharp, detailed, faithful to the original"
 ZIMAGE_NEGATIVE = "blurry, lowres, distorted text, garbled text, artifacts"
 # Flux VAE scale 8 -> the diffusers pipeline requires sizes divisible by
@@ -239,7 +243,7 @@ class ZImageBackend:
             # (FACE_STEPS=8): step compensation would break the strength
             # calibration the floors are bound to.
             num_inference_steps=ZIMAGE_STEPS,
-            guidance_scale=ZIMAGE_CFG,
+            guidance_scale=ZIMAGE_DIFFUSERS_GUIDANCE,
             generator=generator,
         ).images[0]
         if result.size != orig_size:

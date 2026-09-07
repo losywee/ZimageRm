@@ -134,6 +134,14 @@ def test_gguf_filename_resolution():
     assert GGUF_FILES["q4"].endswith(".gguf")
 
 
+def test_zimage_cfg_semantics():
+    from zinvis.regen import zimage, zimage_lite
+
+    assert zimage.ZIMAGE_DIFFUSERS_GUIDANCE == 0.0
+    assert zimage_lite.ZIMAGE_LITE_CFG == 0.0
+    assert zimage.ZIMAGE_CFG == 1.0
+
+
 if __name__ == "__main__":
     test_resolve_pipeline()
     test_resolve_strength()
@@ -142,4 +150,5 @@ if __name__ == "__main__":
     test_lcm_steps()
     test_target_size_grids()
     test_gguf_filename_resolution()
+    test_zimage_cfg_semantics()
     print("PROFILES OK")
