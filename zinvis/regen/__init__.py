@@ -15,7 +15,7 @@ class DuoBackend:
 
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
                  refine_strength: float = 0.18, psnr_floor: float = 24.0,
-                 low_vram: bool = False, stream: bool = False):
+                 low_vram: bool = False, stream: bool | None = None):
         self.chroma = ChromaBackend(device=device, hf_token=hf_token)
         self.zimage = ZImageBackend(
             device=device, hf_token=hf_token,
@@ -52,7 +52,8 @@ class DuoBackend:
 
 
 def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,
-                  low_vram: bool = False, stream: bool = False, **kwargs):
+                  low_vram: bool = False, stream: bool | None = None,
+                  **kwargs):
     if name == "chroma":
         return ChromaBackend(device=device, hf_token=hf_token)
     if name == "zimage":

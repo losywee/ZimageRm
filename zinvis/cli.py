@@ -25,10 +25,13 @@ def build_parser() -> argparse.ArgumentParser:
                     help="duo = Chroma1 + Z-Image refinement; default: auto "
                          "(zimage with CPU offload on GPUs <30 GiB, duo otherwise)")
     ap.add_argument("--low-vram", action="store_true",
-                    help="force Z-Image DiffSynth mode (small cards)")
-    ap.add_argument("--stream", action="store_true",
-                    help="Z-Image DiffSynth disk-streaming (fp8): lower RAM, "
-                         "higher latency; default is CPU bf16 offload")
+                    help="force Z-Image DiffSynth disk-streaming (small cards)")
+    ap.add_argument("--stream", action="store_true", default=None,
+                    help="force Z-Image DiffSynth disk-streaming (fp8, ~10 GB "
+                         "RAM; default on small cards)")
+    ap.add_argument("--cpu-offload", action="store_true",
+                    help="force Z-Image DiffSynth CPU bf16 offload (~20 GB "
+                         "RAM, lower latency; needs a big-RAM host)")
     ap.add_argument("--vendor", default=None,
                     choices=["google", "openai", "microsoft", "meta"],
                     help="strength cohort; auto-sniffs provenance when omitted")
@@ -56,12 +59,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
+    stream = True if args.stream else (False if args.cpu_offload else None)
     eng = ZinvisEngine(
         hf_token=args.hf_token,
         refine_strength=args.refine_strength,
         psnr_floor=args.psnr_floor,
         low_vram=args.low_vram,
-        stream=args.stream,
+        stream=stream,
         keep_text=args.keep_text,
     )
     in_path = Path(args.input)

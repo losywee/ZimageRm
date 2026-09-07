@@ -39,7 +39,7 @@ class ZinvisEngine:
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
                  refine_strength: float = profiles.DUO_REFINE_STRENGTH,
                  psnr_floor: float = profiles.DEFAULT_PSNR_FLOOR,
-                 low_vram: bool = False, stream: bool = False,
+                 low_vram: bool = False, stream: bool | None = None,
                  keep_text: bool = False):
         self.device = device
         self.hf_token = hf_token

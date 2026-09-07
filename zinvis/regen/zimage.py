@@ -69,10 +69,13 @@ class ZImageBackend:
     name = "zimage"
 
     def __init__(self, device: str = "cuda", hf_token: str | None = None,
-                 prefer: str = "diffusers", stream: bool = False):
+                 prefer: str = "diffusers", stream: bool | None = None):
         self.device = device
         self.hf_token = hf_token
         self.prefer = prefer
+        # None = auto: disk streaming when the DiffSynth path is selected
+        # for a small card (low RAM-safe), CPU bf16 offload otherwise.
+        # Disk streaming needs ~10 GB RAM; CPU bf16 needs ~20 GB.
         self.stream = stream
         self._pipe = None
         self.mode: str | None = None
@@ -85,6 +88,10 @@ class ZImageBackend:
                 return self._load_diffusers()
             except ImportError:
                 pass
+        if self.stream is None:
+            # Auto: the DiffSynth path is only selected for small cards,
+            # where disk streaming is the RAM-safe choice.
+            self.stream = True
         return self._load_diffsynth()
 
     def _load_diffusers(self):
@@ -146,6 +153,14 @@ class ZImageBackend:
             ),
             vram_limit=vram_limit_gb(),
         )
+        # Force materialization of exactly the img2img stack (the pipeline
+        # pages per-stage, but an explicit preload avoids unmaterialized
+        # meta params slipping through in disk-streaming mode).
+        try:
+            pipe.load_models_to_device(
+                ["text_encoder", "dit", "vae_encoder", "vae_decoder"])
+        except Exception:
+            pass
         self._pipe = pipe
         self.mode = "diffsynth"
         return self._pipe
@@ -156,7 +171,7 @@ class ZImageBackend:
             try:
                 return self._run_diffsynth(image, strength, seed)
             except NotImplementedError as exc:
-                if "meta" not in str(exc) or not self.stream:
+                if "meta" not in str(exc) or self.stream is False:
                     raise
                 # Disk streaming hit unmaterialized meta params: rebuild once
                 # with CPU bf16 offload (no meta tensors) and retry.
