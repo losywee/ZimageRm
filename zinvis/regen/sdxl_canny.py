@@ -97,10 +97,15 @@ class SDXLCannyBackend:
         pipe.scheduler = EulerDiscreteScheduler.from_config(
             pipe.scheduler.config)
         peft_torchao_compat()
-        pipe.load_lora_weights(
-            SDXL_LIGHTNING_MODEL_ID,
-            weight_name=SDXL_LIGHTNING_LORA,
-        )
+        lora_kwargs = {"token": self.hf_token} if self.hf_token else {}
+        try:
+            pipe.load_lora_weights(
+                SDXL_LIGHTNING_MODEL_ID,
+                weight_name=SDXL_LIGHTNING_LORA, **lora_kwargs)
+        except TypeError:
+            pipe.load_lora_weights(
+                SDXL_LIGHTNING_MODEL_ID,
+                weight_name=SDXL_LIGHTNING_LORA)
         if self.low_vram:
             pipe.enable_model_cpu_offload()
         else:

@@ -25,7 +25,8 @@ class DuoBackend:
         self.chroma = ChromaBackend(device=device, hf_token=hf_token)
         self.zimage = ZImageBackend(
             device=device, hf_token=hf_token,
-            prefer="diffsynth" if low_vram else "diffusers",
+            prefer="diffsynth"
+            if (low_vram or stream is not None) else "diffusers",
             stream=stream,
         )
         self.refine_strength = refine_strength
@@ -70,7 +71,8 @@ def build_backend(name: str, device: str = "cuda", hf_token: str | None = None,
     if name == "zimage":
         return ZImageBackend(
             device=device, hf_token=hf_token,
-            prefer="diffsynth" if low_vram else "diffusers",
+            prefer="diffsynth"
+            if (low_vram or stream is not None) else "diffusers",
             stream=stream,
         )
     if name == "zimage-lite":

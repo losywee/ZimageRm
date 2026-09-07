@@ -134,6 +134,45 @@ def test_gguf_filename_resolution():
     assert GGUF_FILES["q4"].endswith(".gguf")
 
 
+def test_zimage_lite_embeds_cached_across_unload():
+    from zinvis.regen.zimage_lite import ZImageLiteBackend
+
+    be = ZImageLiteBackend(device="cpu")
+    be._pipe = object()
+    be._embeds = ["e"]
+    be.unload()
+    assert be._pipe is None
+    assert be._embeds == ["e"]
+
+
+def test_zimage_prefer_and_fallback():
+    from zinvis.regen import build_backend
+    from zinvis.regen import zimage as zm
+
+    assert build_backend("zimage", device="cpu").prefer == "diffusers"
+    assert build_backend("zimage", device="cpu",
+                         stream=True).prefer == "diffsynth"
+    assert build_backend("zimage", device="cpu",
+                         stream=False).prefer == "diffsynth"
+    assert build_backend("zimage", device="cpu",
+                         low_vram=True).prefer == "diffsynth"
+    duo = build_backend("duo", device="cpu", stream=True)
+    assert duo.zimage.prefer == "diffsynth", duo.zimage.prefer
+
+    be1 = zm.ZImageBackend(device="cpu", prefer="diffusers")
+    be1._load_diffsynth = lambda: "synth"
+    orig = zm._diffusers_has_zimage
+    try:
+        zm._diffusers_has_zimage = lambda: False
+        assert be1._load() == "synth"
+        be2 = zm.ZImageBackend(device="cpu", prefer="diffusers")
+        be2._load_diffusers = lambda: "diff"
+        zm._diffusers_has_zimage = lambda: True
+        assert be2._load() == "diff"
+    finally:
+        zm._diffusers_has_zimage = orig
+
+
 def test_zimage_cfg_semantics():
     from zinvis.regen import zimage, zimage_lite
 
@@ -150,5 +189,7 @@ if __name__ == "__main__":
     test_lcm_steps()
     test_target_size_grids()
     test_gguf_filename_resolution()
+    test_zimage_lite_embeds_cached_across_unload()
+    test_zimage_prefer_and_fallback()
     test_zimage_cfg_semantics()
     print("PROFILES OK")

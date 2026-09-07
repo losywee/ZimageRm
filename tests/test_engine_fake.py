@@ -360,6 +360,43 @@ def test_oom_retry_and_backoff(tmp="/tmp/zinvis_recover_test"):
     assert seen_sizes[1][0] < 256, seen_sizes
 
 
+def test_backoff_after_oom(tmp="/tmp/zinvis_backoff_oom_test"):
+    p = Path(tmp)
+    p.mkdir(parents=True, exist_ok=True)
+    src = make_image(p / "in.png", size=(256, 192))
+
+    class OomThenDark(FakeBackend):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            self.tries = 0
+            self.sizes = []
+
+        def run(self, image, strength, seed):
+            self.tries += 1
+            self.sizes.append((image.size, round(strength, 3)))
+            if self.tries == 1:
+                raise RuntimeError("CUDA out of memory. Tried to allocate")
+            import numpy as np
+
+            arr = np.asarray(image).astype(np.float64)
+            arr = np.clip(arr - (strength / 0.4) * 200.0, 0, 255)
+            out = Image.fromarray(arr.astype(np.uint8))
+            out.info["zinvis_stages"] = [f"dark(s={strength})"]
+            return out
+
+    eng = setup_engine(p)
+    be = OomThenDark()
+    eng._backend_for = lambda name: be
+    r = eng.run_file(str(src), str(p / "out.png"), "sdxl")
+    assert r.status == "cleaned", r.error
+    assert any("oom_retry" in w for w in r.warnings), r.warnings
+    assert not any("backoff skipped" in w for w in r.warnings), r.warnings
+    assert any("strength_backoff" in s for s in r.stages), r.stages
+    assert be.sizes[1][0][0] < 256, be.sizes
+    assert be.sizes[2][0] == be.sizes[1][0], be.sizes
+    assert be.sizes[2][1] < be.sizes[1][1], be.sizes
+
+
 def test_ocr_capture(tmp="/tmp/zinvis_ocr_test"):
     import zinvis.ocr as ocr_mod
 
@@ -486,6 +523,7 @@ if __name__ == "__main__":
     test_vram_restore()
     test_zimage_stream_fallback()
     test_oom_retry_and_backoff()
+    test_backoff_after_oom()
     test_ocr_capture()
     test_ocr_skipped_files()
     test_new_fixes()

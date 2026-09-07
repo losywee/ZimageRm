@@ -57,6 +57,9 @@ class ZinvisEngine:
         # Sticky downscale: once an OOM forces a smaller working size, later
         # batch files start there instead of re-OOMing one by one.
         self._oom_scale: float = 1.0
+        # Size of the successful OOM-retry run for the current file; the
+        # PSNR backoff attempt must reuse it or it will OOM identically.
+        self._oom_run_size: tuple[int, int] | None = None
 
     def _backend_for(self, name: str):
         if self._backend is None or self._backend_name != name:
@@ -187,6 +190,7 @@ class ZinvisEngine:
                  strength: float | None = None, seed: int | None = None,
                  max_side: int = 0, keep_text: bool | None = None) -> ImageRecord:
         t0 = now()
+        self._oom_run_size = None
         in_p, out_p = Path(input_path), Path(output_path)
         plan = self.plan(pipeline, vendor, strength, seed, in_p)
         record = ImageRecord(
@@ -259,8 +263,15 @@ class ZinvisEngine:
                     and strength_v > backoff_floor):
                 retry_s = max(backoff_floor,
                               strength_v * BACKOFF_FACTOR)
+                # After an OOM downscale, retry at the size that succeeded —
+                # full size would OOM again and the backoff would be skipped.
+                run_img = working
+                if self._oom_run_size is not None \
+                        and self._oom_run_size != working.size:
+                    run_img = working.resize(self._oom_run_size,
+                                             Image.Resampling.LANCZOS)
                 try:
-                    retry = backend.run(working, retry_s, plan["seed"])
+                    retry = backend.run(run_img, retry_s, plan["seed"])
                 except Exception as exc:
                     if not _is_oom(exc):
                         raise
@@ -330,6 +341,7 @@ class ZinvisEngine:
                 continue
             self._oom_scale = min(self._oom_scale,
                                   small.width / working.width)
+            self._oom_run_size = small.size
             record.warnings.append(
                 f"oom_retry: CUDA OOM at {working.size}, retried at "
                 f"{small.size} (detail loss possible; later files start "

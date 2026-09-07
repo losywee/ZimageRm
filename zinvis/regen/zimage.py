@@ -85,6 +85,15 @@ def _disk_stream_config():
     }
 
 
+def _diffusers_has_zimage() -> bool:
+    try:
+        from diffusers import ZImageImg2ImgPipeline  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
 class ZImageBackend:
     name = "zimage"
 
@@ -103,11 +112,10 @@ class ZImageBackend:
     def _load(self):
         if self._pipe is not None:
             return self._pipe
-        if self.prefer != "diffsynth":
-            try:
-                return self._load_diffusers()
-            except ImportError:
-                pass
+        # _load_diffusers converts a missing pipeline into RuntimeError, so
+        # routing on ImportError here never fired; probe the import instead.
+        if self.prefer != "diffsynth" and _diffusers_has_zimage():
+            return self._load_diffusers()
         if self.stream is None:
             # Auto: the DiffSynth path is only selected for small cards,
             # where disk streaming is the RAM-safe choice.

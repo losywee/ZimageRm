@@ -58,6 +58,7 @@ class ZImageLiteBackend:
     The watermark prompt is a fixed constant, so the 8 GB Qwen3 text
     encoder is loaded, encodes once, and is freed BEFORE the GGUF
     transformer loads — peak system RAM stays ~8 GB (fits free Colab).
+    Embeddings are cached on CPU across unload/reload cycles.
     Same 8-step schedule and uncalibrated floors as zimage.
     """
 
@@ -137,25 +138,26 @@ class ZImageLiteBackend:
 
         tok_kwargs = {"token": self.hf_token} if self.hf_token else {}
 
-        # 1. Text encoder pass first (8 GB), then free it entirely so the
-        #    GGUF transformer never stacks on top of it in VRAM. no_grad is
-        #    essential: embeddings that carry an autograd graph pin every
-        #    encoder weight (~8 GB) on the GPU even after `del te`.
-        tokenizer = AutoTokenizer.from_pretrained(
-            ZIMAGE_MODEL_ID, subfolder="tokenizer", **tok_kwargs)
-        te = Qwen3Model.from_pretrained(
-            ZIMAGE_MODEL_ID, subfolder="text_encoder",
-            torch_dtype=dtype, **tok_kwargs).to(self.device)
-        with torch.no_grad():
-            embeds = self._encode_once(tokenizer, te, torch, self.device)
-        embeds = [e.detach().to("cpu") for e in embeds]
-        del te
-        gc.collect()
-        try:
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-        except Exception:
-            pass
+        if self._embeds is None:
+            # 1. Text encoder pass first (8 GB), then free it entirely so the
+            #    GGUF transformer never stacks on top of it in VRAM. no_grad
+            #    is essential: embeddings that carry an autograd graph pin
+            #    every encoder weight (~8 GB) on the GPU even after `del te`.
+            tokenizer = AutoTokenizer.from_pretrained(
+                ZIMAGE_MODEL_ID, subfolder="tokenizer", **tok_kwargs)
+            te = Qwen3Model.from_pretrained(
+                ZIMAGE_MODEL_ID, subfolder="text_encoder",
+                torch_dtype=dtype, **tok_kwargs).to(self.device)
+            with torch.no_grad():
+                embeds = self._encode_once(tokenizer, te, torch, self.device)
+            self._embeds = [e.detach().to("cpu") for e in embeds]
+            del te
+            gc.collect()
+            try:
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
 
         # 2. Small components + GGUF transformer.
         vae = AutoencoderKL.from_pretrained(
@@ -179,7 +181,6 @@ class ZImageLiteBackend:
             tokenizer=None, transformer=transformer)
         pipe.to(self.device)
         self._pipe = pipe
-        self._embeds = embeds
         return self._pipe
 
     def unload(self):
@@ -187,7 +188,6 @@ class ZImageLiteBackend:
             return
         del self._pipe
         self._pipe = None
-        self._embeds = None
         try:
             import torch
 
