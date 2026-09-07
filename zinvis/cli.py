@@ -6,7 +6,7 @@ from pathlib import Path
 
 from . import __version__, profiles
 from .engine import ZinvisEngine
-from .io_utils import ImageRecord
+from .io_utils import BatchReport, ImageRecord
 from .vendor import sniff_vendor
 
 
@@ -38,6 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--max-side", default=0, type=int,
                     help="cap the long side before diffusion (0 = native)")
     ap.add_argument("--glob", default="*.png")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="batch: skip files whose output already exists")
     ap.add_argument("--hf-token", default=None)
     ap.add_argument("--report", default=None, help="write JSON report here")
     ap.add_argument("--version", action="version",
@@ -56,15 +58,34 @@ def main(argv=None) -> int:
     in_path = Path(args.input)
 
     if in_path.is_dir():
+        report_path = args.report or str(Path(args.output) / "summary.json")
+        Path(report_path).parent.mkdir(parents=True, exist_ok=True)
+        collected: list = []
+
+        def _write_partial():
+            Path(report_path).write_text(BatchReport(
+                in_dir=str(in_path), out_dir=str(args.output),
+                images=collected,
+            ).to_json())
+
+        def _progress(r):
+            line = f"[{r.status}] {Path(r.input).name}"
+            if r.error:
+                line += f" ({r.error})"
+            elif r.status == "cleaned":
+                line += f" psnr={r.psnr:.1f}dB strength={r.strength}"
+            print(line, flush=True)
+            collected.append(r)
+            _write_partial()
+
         br = eng.run_dir(args.input, args.output, args.pipeline,
                          args.vendor, args.strength, args.seed, args.glob,
-                         args.max_side)
+                         args.max_side, skip_existing=args.skip_existing,
+                         progress=_progress)
+        Path(report_path).write_text(br.to_json())
         s = br.summary
         print(f"processed {s['total']} images in {s['seconds']:.1f}s | "
               f"ok={s['succeeded']} failed={s['failed']}")
-        report_path = args.report or str(Path(args.output) / "summary.json")
-        Path(report_path).parent.mkdir(parents=True, exist_ok=True)
-        Path(report_path).write_text(br.to_json())
         print("report:", report_path)
         return 0 if s["failed"] == 0 else 1
 

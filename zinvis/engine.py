@@ -156,12 +156,26 @@ class ZinvisEngine:
     def run_dir(self, in_dir: str, out_dir: str, pipeline: str | None,
                 vendor: str | None = None, strength: float | None = None,
                 seed: int | None = None, glob_pattern: str = "*.png",
-                max_side: int = 0) -> BatchReport:
+                max_side: int = 0, skip_existing: bool = False,
+                progress=None) -> BatchReport:
         t0 = now()
         br = BatchReport(in_dir=in_dir, out_dir=out_dir)
         for p in sorted(Path(in_dir).glob(glob_pattern)):
-            r = self.run_file(str(p), str(Path(out_dir) / p.name),
-                              pipeline, vendor, strength, seed, max_side)
+            out_p = Path(out_dir) / p.name
+            if skip_existing and out_p.is_file():
+                r = ImageRecord(
+                    input=str(p), output=str(out_p),
+                    pipeline="auto" if pipeline is None else pipeline,
+                    resolved_pipeline="", vendor=vendor,
+                    strength=strength or 0.0,
+                    seed=profiles.resolve_seed(seed),
+                    status="skipped_existing",
+                )
+            else:
+                r = self.run_file(str(p), str(out_p), pipeline, vendor,
+                                  strength, seed, max_side)
             br.images.append(r)
+            if progress is not None:
+                progress(r)
         br.seconds = now() - t0
         return br

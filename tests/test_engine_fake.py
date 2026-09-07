@@ -110,6 +110,14 @@ def test_batch(tmp="/tmp/zinvis_batch_test"):
     assert br.summary["succeeded"] == 2, br.summary
     assert '"status"' in br.to_json()
 
+    (p / "out" / "b.png").unlink()
+    (p / "out" / "a.png").write_bytes(b"placeholder")
+    seen = []
+    br = eng.run_dir(str(p), str(p / "out"), "chroma", "openai",
+                     skip_existing=True, progress=seen.append)
+    assert [r.status for r in br.images] == ["skipped_existing", "cleaned"]
+    assert len(seen) == 2
+
 
 if __name__ == "__main__":
     test_run_file()
