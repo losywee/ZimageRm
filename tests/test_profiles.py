@@ -68,9 +68,21 @@ def test_resolve_seed():
     assert profiles.resolve_seed(7) == 7
 
 
+def test_lcm_steps():
+    from zinvis.regen.lcm import lcm_steps
+
+    assert lcm_steps(0.20) == 4      # window 10 fits 4
+    assert lcm_steps(0.35) == 4      # window 17
+    assert lcm_steps(0.05) == 2      # window 2 clamps
+    assert lcm_steps(0.01) == 1      # minimum 1 step
+    assert lcm_steps(0.0) == 1       # window floor, never 0
+    assert lcm_steps(0.9, 50) == 4   # never above the LCM step count
+
+
 if __name__ == "__main__":
     test_resolve_pipeline()
     test_resolve_strength()
     test_requested_steps()
     test_resolve_seed()
+    test_lcm_steps()
     print("PROFILES OK")

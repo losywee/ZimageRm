@@ -2,14 +2,21 @@ from __future__ import annotations
 
 from PIL import Image
 
-from ..profiles import requested_steps
-
 LCM_MODEL_ID = "SimianLuo/LCM_Dreamshaper_v7"
-LCM_EFFECTIVE_STEPS = 4
+# LCM is distilled for few steps; the img2img schedule window is
+# original_steps * strength (50-step base), so num_inference_steps must
+# fit inside it. 4 steps with a window clamp covers all legal strengths.
+LCM_STEPS = 4
 LCM_CFG = 1.0
 LCM_PROMPT = "high quality, sharp, detailed, faithful to the original"
 LATENT_GRID = 8
 LCM_NATIVE_MAX_SIDE = 768
+
+
+def lcm_steps(strength: float, original_steps: int = 50) -> int:
+    """Fixed LCM step count clamped into the strength-sliced window."""
+    window = max(1, int(original_steps * float(strength)))
+    return max(1, min(LCM_STEPS, window))
 
 
 def lcm_target_size(width: int, height: int) -> tuple[int, int]:
@@ -85,7 +92,11 @@ class LcmBackend:
         prepared = working if working.size == target else working.resize(
             target, Image.Resampling.LANCZOS
         )
-        steps = requested_steps(LCM_EFFECTIVE_STEPS, strength)
+        steps = lcm_steps(
+            strength,
+            int(getattr(pipe.scheduler.config, "original_inference_steps", 50)
+                or 50),
+        )
         generator = torch.Generator(device=self.device).manual_seed(seed)
         result = pipe(
             prompt=LCM_PROMPT,

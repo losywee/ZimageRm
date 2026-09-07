@@ -31,7 +31,7 @@ input.png ──► [stage 1: Chroma1-HD img2img, strength = vendor floor]
 | `duo` (default) | Chroma1 global pass | Z-Image Turbo refinement (default 0.18, PSNR-floor gated) |
 | `sdxl` | SDXL-base + **SDXL-Lightning** 4-step LoRA img2img, guidance 1.0 | — |
 | `sana` | SANA-Sprint 0.6B 2-step img2img (`Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers`), guidance 1.0, SCM-locked to 2 steps (strength <0.5 runs only 1 of them) | — |
-| `lcm` | SD1.5 Dreamshaper + LCM img2img (`SimianLuo/LCM_Dreamshaper_v7`), guidance 1.0 | — |
+| `lcm` | SD1.5 Dreamshaper + LCM img2img (`SimianLuo/LCM_Dreamshaper_v7`), guidance 1.0, 4 steps clamped to the strength window (`original_steps × strength`) | — |
 | `vae` | SD VAE (`sd-vae-ft-mse`) round-trip + latent noise (`strength` = noise std) | — |
 
 `duo` auto-collapses to `chroma` for OpenAI/Microsoft provenance (measured
