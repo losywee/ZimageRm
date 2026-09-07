@@ -137,23 +137,27 @@ def test_auto_pipeline(tmp="/tmp/zinvis_auto_test"):
     src = make_image(p / "in.png")
     eng = setup_engine(p)
 
-    engine_mod.vram_gb = lambda: 15.0
-    plan = eng.plan(None, None, None, None)
-    assert plan["pipeline"] == "zimage", plan
-    assert any("auto:" in w for w in plan["warnings"])
+    original = engine_mod.vram_gb
+    try:
+        engine_mod.vram_gb = lambda: 15.0
+        plan = eng.plan(None, None, None, None)
+        assert plan["pipeline"] == "zimage", plan
+        assert any("auto:" in w for w in plan["warnings"])
 
-    r = eng.run_file(str(src), str(p / "auto_out.png"), None)
-    assert r.resolved_pipeline == "zimage"
-    assert r.pipeline == "auto"
-    assert r.strength == 0.30
+        r = eng.run_file(str(src), str(p / "auto_out.png"), None)
+        assert r.resolved_pipeline == "zimage"
+        assert r.pipeline == "auto"
+        assert r.strength == 0.30
 
-    engine_mod.vram_gb = lambda: 80.0
-    plan = eng.plan(None, "openai", None, None)
-    assert plan["pipeline"] == "chroma", plan
+        engine_mod.vram_gb = lambda: 80.0
+        plan = eng.plan(None, "openai", None, None)
+        assert plan["pipeline"] == "chroma", plan
 
-    engine_mod.vram_gb = lambda: None
-    plan = eng.plan(None, None, None, None)
-    assert plan["pipeline"] == "duo", plan
+        engine_mod.vram_gb = lambda: None
+        plan = eng.plan(None, None, None, None)
+        assert plan["pipeline"] == "duo", plan
+    finally:
+        engine_mod.vram_gb = original
 
     eng_small = ZinvisEngine(device="cpu", hf_token=None, low_vram=True)
     eng_small._backend_for = lambda name: FakeBackend()
@@ -469,6 +473,7 @@ def test_new_fixes(tmp="/tmp/zinvis_new_fixes_test"):
             ret = cli_mod.main([str(dir_in), str(p / "dir_out"), "--no-ocr"])
         out_str = buf.getvalue()
         assert "0 images matched" in out_str and "*.jpg" in out_str, out_str
+        assert ret == 1, ret
     finally:
         cli_mod.ZinvisEngine = orig_engine_cls
 

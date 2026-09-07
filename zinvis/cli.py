@@ -122,6 +122,10 @@ def main(argv=None) -> int:
             if found_others:
                 print(f"warning : 0 images matched '{args.glob}', but files matching "
                       f"{', '.join(found_others)} were found. Pass --glob '<pattern>' to process them.")
+            else:
+                print(f"warning : 0 images matched '{args.glob}' in {in_path}")
+            print("report:", report_path)
+            return 1
         print("report:", report_path)
         return 0 if s["failed"] == 0 else 1
 

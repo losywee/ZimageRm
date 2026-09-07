@@ -1,7 +1,8 @@
 torch>=2.0
-diffusers>=0.35
-transformers>=4.40
+diffusers>=0.36
+transformers>=4.51
 accelerate>=0.20
 safetensors>=0.4
+huggingface_hub>=0.20
 diffsynth>=2.0.17,<3
 gguf>=0.10

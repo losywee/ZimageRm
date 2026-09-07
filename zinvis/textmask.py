@@ -17,6 +17,11 @@ from __future__ import annotations
 import numpy as np
 from PIL import Image, ImageFilter
 
+try:
+    import cv2 as _cv2
+except Exception:
+    _cv2 = None
+
 # Components taller than this fraction of the frame are left to regenerate.
 MAX_TEXT_HEIGHT_FRAC = 0.06
 # Components smaller than this are noise, not glyphs.
@@ -42,6 +47,16 @@ def _edge_map(gray: np.ndarray) -> np.ndarray:
 
 def _connected_components(binary: np.ndarray) -> list[tuple[int, int, int, int]]:
     """Two-pass union-find labeling; returns bounding boxes (x0, y0, x1, y1)."""
+    if _cv2 is not None:
+        num, _labels, stats, _cent = _cv2.connectedComponentsWithStats(
+            binary.astype(np.uint8), connectivity=4)
+        return [(int(stats[i, _cv2.CC_STAT_LEFT]),
+                 int(stats[i, _cv2.CC_STAT_TOP]),
+                 int(stats[i, _cv2.CC_STAT_LEFT]
+                     + stats[i, _cv2.CC_STAT_WIDTH] - 1),
+                 int(stats[i, _cv2.CC_STAT_TOP]
+                     + stats[i, _cv2.CC_STAT_HEIGHT] - 1))
+                for i in range(1, num)]
     h, w = binary.shape
     labels = np.zeros((h, w), dtype=np.int32)
     parent: list[int] = [0]
