@@ -83,10 +83,42 @@ def test_lcm_steps():
     assert lcm_steps(0.9, 50) == 4   # never above the LCM step count
 
 
+def test_target_size_grids():
+    from zinvis.regen import chroma, lcm, sana, sdxl, sdxl_canny, vae, zimage
+    from zinvis.regen import zimage_lite
+
+    mods = {
+        # module: required divisor
+        chroma: 16, sdxl: 8, sdxl_canny: 8, vae: 8, lcm: 8,
+        zimage: 16, zimage_lite: 16, sana: 32,
+    }
+    fns = {
+        chroma: chroma.chroma_target_size,
+        sdxl: sdxl.sdxl_target_size,
+        sdxl_canny: None, lcm: lcm.lcm_target_size, vae: vae.vae_target_size,
+        zimage: zimage.zimage_target_size,
+        zimage_lite: zimage_lite.zimage_lite_target_size,
+        sana: sana.sana_target_size,
+    }
+    import random
+
+    rng = random.Random(7)
+    for mod, div in mods.items():
+        fn = fns[mod]
+        if fn is None:
+            continue
+        for _ in range(50):
+            w, h = rng.randint(1, 4096), rng.randint(1, 4096)
+            tw, th = fn(w, h)
+            assert tw % div == 0 and th % div == 0, (mod, w, h, tw, th)
+            assert tw >= div and th >= div
+
+
 if __name__ == "__main__":
     test_resolve_pipeline()
     test_resolve_strength()
     test_requested_steps()
     test_resolve_seed()
     test_lcm_steps()
+    test_target_size_grids()
     print("PROFILES OK")

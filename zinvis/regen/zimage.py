@@ -10,7 +10,9 @@ ZIMAGE_STEPS = 8
 ZIMAGE_CFG = 1.0
 ZIMAGE_PROMPT = "high quality, sharp, detailed, faithful to the original"
 ZIMAGE_NEGATIVE = "blurry, lowres, distorted text, garbled text, artifacts"
-LATENT_GRID = 8
+# Flux VAE scale 8 -> the diffusers pipeline requires sizes divisible by
+# 2x that (16); DiffSynth enforces 16 internally too.
+LATENT_GRID = 16
 
 
 def zimage_target_size(width: int, height: int) -> tuple[int, int]:

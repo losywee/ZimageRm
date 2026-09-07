@@ -11,7 +11,8 @@ GGUF_FILES = {
 ZIMAGE_LITE_STEPS = 8
 ZIMAGE_LITE_CFG = 1.0
 ZIMAGE_LITE_PROMPT = "high quality, sharp, detailed, faithful to the original"
-LATENT_GRID = 8
+# Same 16-divisibility requirement as zimage (Flux VAE scale 8 x 2).
+LATENT_GRID = 16
 
 
 def zimage_lite_target_size(width: int, height: int) -> tuple[int, int]:
