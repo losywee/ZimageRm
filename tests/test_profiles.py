@@ -36,6 +36,12 @@ def test_resolve_strength():
     assert profiles.resolve_strength("lcm", "google") == 0.35
     assert profiles.resolve_strength("lcm", "openai") == 0.20
     assert profiles.resolve_strength("lcm", None) == 0.35
+    assert profiles.resolve_strength("sd-turbo", "google") == 0.35
+    assert profiles.resolve_strength("sd-turbo", "openai") == 0.20
+    assert profiles.resolve_strength("sd-turbo", None) == 0.35
+    assert profiles.resolve_strength("sd15", "google") == 0.35
+    assert profiles.resolve_strength("sd15", "openai") == 0.20
+    assert profiles.resolve_strength("sd15", None) == 0.35
     assert profiles.resolve_strength("vae", None) == 0.15
     assert profiles.resolve_strength("vae", None, 0.05) == 0.05
     try:
@@ -84,13 +90,13 @@ def test_lcm_steps():
 
 
 def test_target_size_grids():
-    from zinvis.regen import chroma, lcm, sana, sdxl, sdxl_canny, vae, zimage
+    from zinvis.regen import chroma, lcm, sana, sd15, sdxl, sdxl_canny, sdturbo, vae, zimage
     from zinvis.regen import zimage_lite
 
     mods = {
         # module: required divisor
         chroma: 16, sdxl: 8, sdxl_canny: 8, vae: 8, lcm: 8,
-        zimage: 16, zimage_lite: 16, sana: 32,
+        zimage: 16, zimage_lite: 16, sana: 32, sdturbo: 8, sd15: 8,
     }
     fns = {
         chroma: chroma.chroma_target_size,
@@ -101,6 +107,8 @@ def test_target_size_grids():
         zimage: zimage.zimage_target_size,
         zimage_lite: zimage_lite.zimage_lite_target_size,
         sana: sana.sana_target_size,
+        sdturbo: sdturbo.sdturbo_target_size,
+        sd15: sd15.sd15_target_size,
     }
     import random
 

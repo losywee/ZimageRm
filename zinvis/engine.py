@@ -161,6 +161,18 @@ class ZinvisEngine:
                 "lcm floors are uncalibrated defaults; SD1.5 is 512-768 "
                 "native, pass --max-side 768 for best fidelity"
             )
+        if resolved == "sd-turbo":
+            warnings.append(
+                "sd-turbo floors are uncalibrated defaults; SD2.1 is "
+                "512-768 native, pass --max-side 768 for best fidelity; "
+                "strengths below 0.5 run only 1 of 2 steps"
+            )
+        if resolved == "sd15":
+            warnings.append(
+                "sd15 floors are uncalibrated defaults; SD1.5 is 512-768 "
+                "native, pass --max-side 768 for best fidelity; slow "
+                "(30-step schedule)"
+            )
         if self.keep_text:
             warnings.append(
                 "keep-text: original pixels are restored over detected text "

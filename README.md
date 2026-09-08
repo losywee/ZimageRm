@@ -34,6 +34,8 @@ input.png ──► [stage 1: Chroma1-HD img2img, strength = vendor floor]
 | `zimage-lite` | Z-Image Turbo with **GGUF-quantized transformer** (`unsloth/Z-Image-Turbo-GGUF`, `--gguf q8|q4`): fixed prompt encoded once and the 8 GB text encoder freed → peak RAM ~8 GB | — |
 | `sana` | SANA-Sprint 0.6B 2-step img2img (`Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers`), guidance 1.0, SCM-locked to 2 steps (strength <0.5 runs only 1 of them) | — |
 | `lcm` | SD1.5 Dreamshaper + LCM img2img (`SimianLuo/LCM_Dreamshaper_v7`), guidance 1.0, 4 steps clamped to the strength window (`original_steps × strength`) | — |
+| `sd-turbo` | SD2.1-Turbo 2-step img2img (`stabilityai/sd-turbo`), guidance 0.0, strength <0.5 runs only 1 of 2 steps | — |
+| `sd15` | SD1.5 full-schedule img2img (`runwayml/stable-diffusion-v1-5`), 30 steps, guidance 7.5 | — |
 | `vae` | SD VAE (`sd-vae-ft-mse`) round-trip + latent noise (`strength` = noise std) | — |
 
 `duo` auto-collapses to `chroma` for OpenAI/Microsoft provenance (measured
@@ -44,6 +46,8 @@ lower floors there), mirroring published cross-engine calibration.
 | Pipeline | Fetch | VRAM | Use when |
 |---|---|---|---|
 | `vae` | **~350 MB** | minimal | weak watermarks, quick sweeps, pre-pass before a heavier engine |
+| `sd15` | **~2.2 GB** | ~3 GB | deepest clean under 3 GB (full 30-step schedule; slow, ~10x lcm) |
+| `sd-turbo` | **~2.6 GB** | ~4 GB | few-step SD2.1 tier (768px native; use `--max-side 768`) |
 | `lcm` | **~4.3 GB** | ~4 GB | lightest diffusion tier (SD1.5, 512-768 native; use `--max-side 768`) |
 | `sana` | ~7.7 GB | ~7 GB | 2-step, ~10x faster per image than sdxl, 1024px native |
 | `sdxl` | ~8 GB | ~10 GB (cpu-offload with `--low-vram`) | calibrated middle tier — best strength/fidelity-per-GB |
@@ -54,13 +58,13 @@ lower floors there), mirroring published cross-engine calibration.
 
 ## Strength policy (vendor floors)
 
-| Vendor | chroma / duo | sdxl | sdxl-canny | sana | lcm | zimage | vae |
-|---|---|---|---|---|---|---|---|
-| google | 0.40 | 0.25 | 0.30 | 0.30 | 0.35 | 0.30 | 0.15 (noise std) |
-| openai | 0.09 | 0.15 | 0.30 | 0.15 | 0.20 | 0.12 | 0.15 |
-| microsoft | 0.125 | 0.25* | 0.30 | 0.30* | 0.35* | 0.15 | 0.15 |
-| meta | 0.17 | 0.25* | 0.30 | 0.30* | 0.35* | 0.15 | 0.15 |
-| unknown | 0.40 | 0.25 | 0.30 | 0.30 | 0.35 | 0.30 | 0.15 |
+| Vendor | chroma / duo | sdxl | sdxl-canny | sana | lcm | sd-turbo | sd15 | zimage | vae |
+|---|---|---|---|---|---|---|---|---|---|
+| google | 0.40 | 0.25 | 0.30 | 0.30 | 0.35 | 0.35 | 0.35 | 0.30 | 0.15 (noise std) |
+| openai | 0.09 | 0.15 | 0.30 | 0.15 | 0.20 | 0.20 | 0.20 | 0.12 | 0.15 |
+| microsoft | 0.125 | 0.25* | 0.30 | 0.30* | 0.35* | 0.35* | 0.35* | 0.15 | 0.15 |
+| meta | 0.17 | 0.25* | 0.30 | 0.30* | 0.35* | 0.35* | 0.35* | 0.15 | 0.15 |
+| unknown | 0.40 | 0.25 | 0.30 | 0.30 | 0.35 | 0.35 | 0.35 | 0.30 | 0.15 |
 
 Chroma and SDXL floors follow published oracle calibrations (fixed seed 0,
 fixed steps/guidance/prompt — the floors are bound to exactly that
@@ -144,6 +148,8 @@ the sdxl backend also patches this gate at runtime as a fallback.)
 | Pipeline | Fetches | Size |
 |---|---|---|
 | `vae` | `stabilityai/sd-vae-ft-mse` | ~0.35 GB |
+| `sd15` | `runwayml/stable-diffusion-v1-5` (fp16) | ~2.2 GB |
+| `sd-turbo` | `stabilityai/sd-turbo` (fp16) | ~2.6 GB |
 | `lcm` | `SimianLuo/LCM_Dreamshaper_v7` | ~4.3 GB |
 | `sana` | `Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers` | ~7.7 GB |
 | `sdxl` | `stabilityai/stable-diffusion-xl-base-1.0` (fp16) + `ByteDance/SDXL-Lightning` LoRA | ~8 GB |

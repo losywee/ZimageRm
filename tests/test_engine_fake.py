@@ -114,6 +114,14 @@ def test_run_file(tmp="/tmp/zinvis_engine_test"):
     assert r.resolved_pipeline == "zimage-lite" and r.strength == 0.30
     assert any("zimage-lite" in w for w in r.warnings), r.warnings
 
+    r = eng.run_file(str(src), str(p / "out13.png"), "sd-turbo")
+    assert r.resolved_pipeline == "sd-turbo" and r.strength == 0.35
+    assert any("sd-turbo" in w for w in r.warnings), r.warnings
+
+    r = eng.run_file(str(src), str(p / "out14.png"), "sd15")
+    assert r.resolved_pipeline == "sd15" and r.strength == 0.35
+    assert any("sd15" in w for w in r.warnings), r.warnings
+
     from zinvis.regen import build_backend
 
     b = build_backend("zimage-lite", device="cpu", gguf="q4")

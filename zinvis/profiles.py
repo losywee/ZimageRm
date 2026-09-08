@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 PROFILES = ("duo", "chroma", "zimage", "zimage-lite", "sdxl", "sdxl-canny",
-            "vae", "sana", "lcm")
+            "vae", "sana", "lcm", "sd-turbo", "sd15")
 PROFILE_SEED = 0
 
 CHROMA_FLOORS = {
@@ -46,6 +46,18 @@ LCM_FLOORS = {
 }
 LCM_UNKNOWN_FLOOR = 0.35
 
+SDTURBO_FLOORS = {
+    "google": 0.35,
+    "openai": 0.20,
+}
+SDTURBO_UNKNOWN_FLOOR = 0.35
+
+SD15_FLOORS = {
+    "google": 0.35,
+    "openai": 0.20,
+}
+SD15_UNKNOWN_FLOOR = 0.35
+
 VAE_DEFAULT_NOISE = 0.15
 
 DUO_REFINE_STRENGTH = 0.18
@@ -87,6 +99,10 @@ def resolve_strength(
         return SANA_FLOORS.get(v, SANA_UNKNOWN_FLOOR)
     if pipeline == "lcm":
         return LCM_FLOORS.get(v, LCM_UNKNOWN_FLOOR)
+    if pipeline == "sd-turbo":
+        return SDTURBO_FLOORS.get(v, SDTURBO_UNKNOWN_FLOOR)
+    if pipeline == "sd15":
+        return SD15_FLOORS.get(v, SD15_UNKNOWN_FLOOR)
     if pipeline == "vae":
         return VAE_DEFAULT_NOISE
     if pipeline in ("zimage", "zimage-lite"):
