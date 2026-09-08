@@ -189,6 +189,14 @@ def test_zimage_cfg_semantics():
     assert zimage.ZIMAGE_CFG == 1.0
 
 
+def test_sd15_model_repo():
+    from zinvis.regen import sd15
+
+    # runwayml's original repo was removed from the Hub (March 2024);
+    # pin the community re-host.
+    assert sd15.SD15_MODEL_ID == "stable-diffusion-v1-5/stable-diffusion-v1-5"
+
+
 if __name__ == "__main__":
     test_resolve_pipeline()
     test_resolve_strength()
@@ -200,4 +208,5 @@ if __name__ == "__main__":
     test_zimage_lite_embeds_cached_across_unload()
     test_zimage_prefer_and_fallback()
     test_zimage_cfg_semantics()
+    test_sd15_model_repo()
     print("PROFILES OK")

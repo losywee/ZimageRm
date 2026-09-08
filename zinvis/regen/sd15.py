@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from PIL import Image
 
-SD15_MODEL_ID = "runwayml/stable-diffusion-v1-5"
+# runwayml's original repo was removed from the Hub in March 2024; this
+# is the community re-host (fp16 variants included).
+SD15_MODEL_ID = "stable-diffusion-v1-5/stable-diffusion-v1-5"
 # Full-schedule SD1.5 img2img: fixed 30 steps, strength slices the
 # executed window (0.3 -> ~9 steps). Guidance 7.5 is the SD1.5 default.
 SD15_STEPS = 30

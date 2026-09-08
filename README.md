@@ -132,7 +132,7 @@ Colab already ships CUDA torch — do **not** install `requirements-ml.txt`
 !git clone https://github.com/losywee/ZimageRm /content/ZimageRm
 %cd /content/ZimageRm
 !pip uninstall -y torchao
-!pip install -r requirements.txt diffusers transformers accelerate peft safetensors 'diffsynth>=2.0.17,<3' beautifulsoup4 ftfy rapidocr-onnxruntime
+!pip install -r requirements.txt diffusers transformers accelerate peft safetensors 'diffsynth>=2.0.17,<3' 'gguf>=0.10' beautifulsoup4 ftfy rapidocr-onnxruntime
 !pip install -e . --no-deps
 !zinvis /content/drive/MyDrive/2026090701 /content/drive/MyDrive/2026090701clean/ \
   --glob '*.png' --pipeline sdxl --low-vram --skip-existing

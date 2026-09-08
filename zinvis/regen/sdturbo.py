@@ -9,7 +9,6 @@ SDTURBO_MODEL_ID = "stabilityai/sd-turbo"
 SDTURBO_STEPS = 2
 SDTURBO_CFG = 0.0
 SDTURBO_PROMPT = "high quality, sharp, detailed, faithful to the original"
-SDTURBO_NEGATIVE = "blurry, lowres, distorted text, garbled text, artifacts"
 LATENT_GRID = 8
 SDTURBO_NATIVE_MAX_SIDE = 768
 
@@ -97,7 +96,6 @@ class SdTurboBackend:
         generator = torch.Generator(device=self.device).manual_seed(seed)
         result = pipe(
             prompt=SDTURBO_PROMPT,
-            negative_prompt=SDTURBO_NEGATIVE,
             image=prepared,
             strength=float(strength),
             num_inference_steps=SDTURBO_STEPS,
