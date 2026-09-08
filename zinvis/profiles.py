@@ -122,3 +122,17 @@ def requested_steps(effective_steps: int, strength: float) -> int:
 
     steps = math.ceil(effective_steps / max(float(strength), 1e-6))
     return max(1, min(steps, MAX_REQUESTED_STEPS))
+
+
+def strength_safe_steps(steps: int, strength: float) -> int:
+    """Scale an img2img schedule up so at least one step executes.
+
+    diffusers' SD-family img2img pipelines truncate the executed steps to
+    `int(num_inference_steps * strength)`; when that yields 0 (few-step
+    schedule x low strength) the pipeline produces empty latents and the
+    VAE attention crashes on a 0-element batch ("cannot reshape tensor of
+    0 elements into shape [0, -1, 1, 512]").
+    """
+    import math
+
+    return max(int(steps), math.ceil(1.0 / max(float(strength), 1e-6)))

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from PIL import Image
 
+from ..profiles import strength_safe_steps
+
 LCM_MODEL_ID = "SimianLuo/LCM_Dreamshaper_v7"
 # LCM is distilled for few steps; the img2img schedule window is
 # original_steps * strength (50-step base), so num_inference_steps must
@@ -92,10 +94,13 @@ class LcmBackend:
         prepared = working if working.size == target else working.resize(
             target, Image.Resampling.LANCZOS
         )
-        steps = lcm_steps(
+        steps = strength_safe_steps(
+            lcm_steps(
+                strength,
+                int(getattr(pipe.scheduler.config, "original_inference_steps",
+                            50) or 50),
+            ),
             strength,
-            int(getattr(pipe.scheduler.config, "original_inference_steps", 50)
-                or 50),
         )
         generator = torch.Generator(device=self.device).manual_seed(seed)
         result = pipe(

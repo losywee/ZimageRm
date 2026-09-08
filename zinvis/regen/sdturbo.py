@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from PIL import Image
 
+from ..profiles import strength_safe_steps
+
 SDTURBO_MODEL_ID = "stabilityai/sd-turbo"
 # SD-Turbo is distilled for 1-4 unguided steps; img2img runs a fixed
 # 2-step schedule and strength slices how many of them execute
@@ -94,11 +96,12 @@ class SdTurboBackend:
             target, Image.Resampling.LANCZOS
         )
         generator = torch.Generator(device=self.device).manual_seed(seed)
+        steps = strength_safe_steps(SDTURBO_STEPS, strength)
         result = pipe(
             prompt=SDTURBO_PROMPT,
             image=prepared,
             strength=float(strength),
-            num_inference_steps=SDTURBO_STEPS,
+            num_inference_steps=steps,
             guidance_scale=SDTURBO_CFG,
             generator=generator,
         ).images[0]

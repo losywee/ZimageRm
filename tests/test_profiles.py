@@ -197,10 +197,28 @@ def test_sd15_model_repo():
     assert sd15.SD15_MODEL_ID == "stable-diffusion-v1-5/stable-diffusion-v1-5"
 
 
+def test_strength_safe_steps():
+    from zinvis.profiles import strength_safe_steps
+
+    assert strength_safe_steps(2, 0.35) == 3   # 2*0.35 -> int 0; 3*0.35 -> 1
+    assert strength_safe_steps(30, 0.35) == 30
+    assert strength_safe_steps(4, 0.2) == 5
+    assert strength_safe_steps(2, 1.0) == 2
+    import random
+
+    rng = random.Random(11)
+    for _ in range(200):
+        base = rng.randint(1, 30)
+        s = rng.uniform(0.01, 1.0)
+        n = strength_safe_steps(base, s)
+        assert int(n * s) >= 1, (base, s, n)
+
+
 if __name__ == "__main__":
     test_resolve_pipeline()
     test_resolve_strength()
     test_requested_steps()
+    test_strength_safe_steps()
     test_resolve_seed()
     test_lcm_steps()
     test_target_size_grids()

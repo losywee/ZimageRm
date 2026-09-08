@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from PIL import Image
 
+from ..profiles import strength_safe_steps
+
 # runwayml's original repo was removed from the Hub in March 2024; this
 # is the community re-host (fp16 variants included).
 SD15_MODEL_ID = "stable-diffusion-v1-5/stable-diffusion-v1-5"
@@ -96,12 +98,13 @@ class SD15Backend:
             target, Image.Resampling.LANCZOS
         )
         generator = torch.Generator(device=self.device).manual_seed(seed)
+        steps = strength_safe_steps(SD15_STEPS, strength)
         result = pipe(
             prompt=SD15_PROMPT,
             negative_prompt=SD15_NEGATIVE,
             image=prepared,
             strength=float(strength),
-            num_inference_steps=SD15_STEPS,
+            num_inference_steps=steps,
             guidance_scale=SD15_CFG,
             generator=generator,
         ).images[0]
